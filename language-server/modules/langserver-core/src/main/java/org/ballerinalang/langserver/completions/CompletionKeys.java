@@ -53,6 +53,8 @@ public class CompletionKeys {
             = new LSContext.Key<>();
     public static final LSContext.Key<String> CURRENT_LINE_SEGMENT_KEY
             = new LSContext.Key<>();
+    public static final LSContext.Key<String> CURRENT_DELIMITER_KEY
+            = new LSContext.Key<>();
     
     // Meta context Keys
     public static final LSContext.Key<Boolean> META_CONTEXT_IS_ENDPOINT_KEY
