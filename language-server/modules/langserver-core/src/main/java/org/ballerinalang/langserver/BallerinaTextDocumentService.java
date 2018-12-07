@@ -66,6 +66,7 @@ import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.MarkedString;
+import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.RenameParams;
 import org.eclipse.lsp4j.SignatureHelp;
@@ -83,6 +84,7 @@ import org.slf4j.LoggerFactory;
 import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
+import org.wso2.ballerinalang.compiler.util.ProjectDirConstants;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -395,7 +397,9 @@ class BallerinaTextDocumentService implements TextDocumentService {
                         .relativize(document.getPath())
                         .toString().split(Pattern.quote(File.separator))[0];
                 if (topLevelNodeType != null && diagnostics.isEmpty() && document.hasProjectRepo() &&
-                        !TEST_DIR_NAME.equals(innerDirName)) {
+                        !TEST_DIR_NAME.equals(innerDirName) &&
+                        !innerDirName.endsWith(ProjectDirConstants.BLANG_SOURCE_EXT)) {
+                    //TODO: Remove !innerDirName.endsWith(".bal") when root level tests available in testerina
                     commands.addAll(CommandUtil.getTestGenerationCommand(topLevelNodeType, fileUri, params,
                                                                          documentManager, lsCompiler));
                 }
@@ -411,7 +415,8 @@ class BallerinaTextDocumentService implements TextDocumentService {
 
                 // Add commands base on node type
                 if (topLevelNodeType != null) {
-                    commands.addAll(getCommandForNodeType(topLevelNodeType, fileUri, line));
+                    Position pos = params.getRange().getStart();
+                    commands.addAll(getCommandForNodeType(topLevelNodeType, fileUri, pos, documentManager, lsCompiler));
                 }
                 return commands;
             } catch (Exception e) {

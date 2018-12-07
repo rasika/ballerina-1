@@ -64,6 +64,8 @@ public class CommandConstants {
 
     public static final String CREATE_TEST_SERVICE_TITLE = "Create Test For Service";
 
+    public static final String ADD_SERVICE_FUNCTIONS_TITLE = "Add Unimplemented Resources";
+
     public static final String ADD_DOCUMENTATION_TITLE = "Document This";
 
     public static final String ADD_ALL_DOC_TITLE = "Document All";
@@ -78,6 +80,8 @@ public class CommandConstants {
     public static final String CMD_CREATE_FUNCTION = "CREATE_FUNC";
 
     public static final String CMD_CREATE_TEST = "CREATE_TEST";
+
+    public static final String CMD_ADD_SERVICE_FUNCTIONS = "ADD_SERVICE_FUNC";
 
     public static final String CMD_CREATE_VARIABLE = "CREATE_VAR";
 

@@ -82,16 +82,44 @@ public class CommandUtil {
      *
      * @param topLevelNodeType Node Type
      * @param docUri           Document URI
-     * @param line             Node line
+     * @param position         Node line
+     * @param documentManager  Document manager
+     * @param lsCompiler       LS compiler
      * @return {@link List}    List of commands for the line
      */
-    public static List<Command> getCommandForNodeType(String topLevelNodeType, String docUri, int line) {
+    public static List<Command> getCommandForNodeType(String topLevelNodeType, String docUri, Position position,
+                                                      WorkspaceDocumentManager documentManager,
+                                                      LSCompiler lsCompiler) {
         List<Command> commands = new ArrayList<>();
-        if (UtilSymbolKeys.OBJECT_KEYWORD_KEY.equals(topLevelNodeType)) {
-            commands.add(getInitializerGenerationCommand(docUri, line));
+        if (UtilSymbolKeys.SERVICE_KEYWORD_KEY.equals(topLevelNodeType)) {
+            commands.addAll(getAddServiceFunctionsCommand(docUri, position, documentManager, lsCompiler));
         }
-        commands.add(getDocGenerationCommand(topLevelNodeType, docUri, line));
+        if (UtilSymbolKeys.OBJECT_KEYWORD_KEY.equals(topLevelNodeType)) {
+            commands.add(getInitializerGenerationCommand(docUri, position.getLine()));
+        }
+        commands.add(getDocGenerationCommand(topLevelNodeType, docUri, position.getLine()));
         commands.add(getAllDocGenerationCommand(docUri));
+        return commands;
+    }
+
+    private static List<Command> getAddServiceFunctionsCommand(String docUri, Position position,
+                                                               WorkspaceDocumentManager documentManager,
+                                                               LSCompiler lsCompiler) {
+        LSServiceOperationContext context = new LSServiceOperationContext();
+        List<Command> commands = new ArrayList<>();
+        Pair<BLangNode, Object> bLangNode = CommandUtil.getBLangNode(position.getLine(),
+                                                                     position.getCharacter(), docUri,
+                                                                     documentManager, lsCompiler, context);
+        // Only supported for top-level nodes
+        if (bLangNode.getLeft().parent instanceof BLangPackage) {
+            List<Object> args = new ArrayList<>();
+            args.add(new CommandUtil.CommandArgument(CommandConstants.ARG_KEY_DOC_URI, docUri));
+            args.add(new CommandUtil.CommandArgument(CommandConstants.ARG_KEY_NODE_LINE, "" + position.getLine()));
+            args.add(new CommandUtil.CommandArgument(CommandConstants.ARG_KEY_NODE_COLUMN,
+                                                     "" + position.getCharacter()));
+            commands.add(new Command(CommandConstants.ADD_SERVICE_FUNCTIONS_TITLE,
+                                     CommandConstants.CMD_ADD_SERVICE_FUNCTIONS, args));
+        }
         return commands;
     }
 

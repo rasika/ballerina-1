@@ -75,8 +75,8 @@ public abstract class CompletionTest {
         boolean result = CompletionTestUtil.isSubList(expectedList, responseItemList);
         if (!result) {
             // This will print nice comparable text in IDE
-//            Assert.assertEquals(responseItemList.toString(), expectedList.toString(),
-//                        "Failed Test for: " + configJsonPath);
+            Assert.assertEquals(responseItemList.toString(), expectedList.toString(),
+                        "Failed Test for: " + configJsonPath);
             Assert.fail("Failed Test for: " + configJsonPath);
         }
     }
