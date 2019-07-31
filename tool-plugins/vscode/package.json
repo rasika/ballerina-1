@@ -14,7 +14,7 @@
         "theme": "light"
     },
     "engines": {
-        "vscode": "^1.30.2"
+        "vscode": "^1.31.0"
     },
     "categories": [
         "Programming Languages",
@@ -99,6 +99,12 @@
                     "type": "boolean",
                     "default": true,
                     "description": "If set to true ballerina endpoints code lens feature will be allowed"
+                },
+                "ballerina.showWhatsNewAfterUpgrades": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Specifies whether to show What's New after upgrading to new feature releases",
+                    "scope": "window"
                 }
             }
         },

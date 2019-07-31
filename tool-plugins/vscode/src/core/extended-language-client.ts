@@ -89,7 +89,7 @@ export interface BallerinaOASRequest {
 }
 
 export interface BallerinaAstOasChangeRequest {
-    oasDefinition?: string,
+    oasDefinition?: string;
     documentIdentifier: {
         uri: string;
     };
@@ -108,7 +108,7 @@ export interface GetBallerinaProjectParams {
 }
 
 export interface BallerinaAstOasChangeResponse {
-    oasAST?: string
+    oasAST?: string;
 }
 
 export interface BallerinaServiceListRequest {
@@ -166,7 +166,7 @@ export class ExtendedLangClient extends LanguageClient {
                 uri: uri.toString()
             },
             ballerinaService: oasService
-        }
+        };
         return this.sendRequest("ballerinaDocument/openApiDefinition", req);
     }
 
@@ -176,7 +176,7 @@ export class ExtendedLangClient extends LanguageClient {
             documentIdentifier: {
                 uri: uri.toString()
             },
-        }
+        };
         return this.sendNotification("ballerinaDocument/apiDesignDidChange", req);
     }
 
@@ -185,8 +185,8 @@ export class ExtendedLangClient extends LanguageClient {
             documentIdentifier: {
                 uri: uri.toString()
             },
-        }
-        return this.sendRequest("ballerinaDocument/serviceList", req)
+        };
+        return this.sendRequest("ballerinaDocument/serviceList", req);
     }
 
     getBallerinaProject(params: GetBallerinaProjectParams): Thenable<BallerinaProject> {

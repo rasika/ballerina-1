@@ -21,7 +21,7 @@
 import {
     workspace, window, commands, languages, Uri,
     ConfigurationChangeEvent, extensions,
-    Extension, ExtensionContext, IndentAction,
+    Extension, ExtensionContext, IndentAction, MessageItem, env,
 } from "vscode";
 import {
     INVALID_HOME_MSG, INSTALL_BALLERINA, DOWNLOAD_BALLERINA, MISSING_SERVER_CAPABILITY,
@@ -35,7 +35,7 @@ import { getServerOptions } from '../server/server';
 import { ExtendedLangClient } from './extended-language-client';
 import { info, getOutputChannel } from '../utils/index';
 import { AssertionError } from "assert";
-import { OVERRIDE_BALLERINA_HOME, BALLERINA_HOME, ALLOW_EXPERIMENTAL, ENABLE_DEBUG_LOG } from "./preferences";
+import { OVERRIDE_BALLERINA_HOME, BALLERINA_HOME, ALLOW_EXPERIMENTAL, ENABLE_DEBUG_LOG, SHOW_WHATS_NEW } from "./preferences";
 
 export interface ConstructIdentifier {
     moduleName: string;
@@ -424,6 +424,62 @@ export class BallerinaExtension {
 
     public onProjectTreeElementClicked(callback: (construct: ConstructIdentifier) => void) {
         this.projectTreeElementClickedCallbacks.push(callback);
+    }
+
+    public async showWhatsNewMessage(version: string) {
+        const actions: MessageItem[] = [{ title: "What's New" }, { title: 'Release Notes' }, { title: '❤' }];
+
+        const result = await window.showInformationMessage(
+            `Ballerina has been updated to v${version} — check out what's new!`,
+            ...actions
+        );
+
+        if (result !== null) {
+            if (result === actions[0]) {
+                await commands.executeCommand('ballerina.showWelcomePage');
+            }
+            else if (result === actions[1]) {
+                await env.openExternal(Uri.parse('https://github.com/ballerina-platform/ballerina-lang/blob/master/CHANGELOG.md'));
+            }
+            else if (result === actions[2]) {
+                await env.openExternal(Uri.parse('https://ballerina.io/community/'));
+            }
+        }
+    }
+
+    public async showWelcomePage(version: string, previousVersion: string | undefined) {
+        try {
+            if (previousVersion === undefined) {
+                // Logger.log('Ballerina first-time install');
+                if (<boolean>workspace.getConfiguration().get(SHOW_WHATS_NEW)) {
+                    await commands.executeCommand('ballerina.showWelcomePage');
+                }
+                return;
+            }
+
+            if (previousVersion !== version) {
+                // Logger.log(`Ballerina upgraded from v${previousVersion} to v${version}`);
+            }
+
+            const [major, minor] = version.split('.');
+            const [prevMajor, prevMinor] = previousVersion.split('.');
+            if (
+                (major === prevMajor && minor === prevMinor) ||
+                // Don't notify on downgrades
+                (major < prevMajor || (major === prevMajor && minor < prevMinor))
+            ) {
+                return;
+            }
+
+            if (<boolean>workspace.getConfiguration().get(SHOW_WHATS_NEW) && major !== prevMajor) {
+                await commands.executeCommand('ballerina.showWelcomePage');
+            } else {
+                await this.showWhatsNewMessage(version);
+            }
+        }
+        finally {
+            // void (await Messages.showSetupViewLayoutMessage(previousVersion));
+        }
     }
 }
 

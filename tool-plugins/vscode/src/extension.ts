@@ -17,7 +17,7 @@
  * under the License.
  *
  */
-import { ExtensionContext } from 'vscode';
+import { ExtensionContext, extensions } from 'vscode';
 import { ballerinaExtInstance } from './core';
 import { activate as activateAPIEditor } from './api-editor';
 import { activate as activateDiagram } from './diagram'; 
@@ -25,12 +25,15 @@ import { activate as activateBBE } from './bbe';
 import { activate as activateDocs } from './docs';
 import { activate as activateTraceLogs } from './trace-logs';
 import { activate as activateTreeView } from './project-tree-view';
+import { activate as activateWelcome } from './welcome-page';
 import { activateDebugConfigProvider } from './debugger';
 import { activateTestRunner } from './test-runner';
 import { activate as activateProjectFeatures } from './project';
 import { activate as activateOverview } from './overview';
 import { StaticFeature, ClientCapabilities, DocumentSelector, ServerCapabilities } from 'vscode-languageclient';
 import { ExtendedLangClient } from './core/extended-language-client';
+export const extensionId = 'ballerina';
+export const extensionQualifiedId = `eamodio.${extensionId}`;
 
 // TODO initializations should be contributions from each component
 function onBeforeInit(langClient: ExtendedLangClient) {
@@ -59,6 +62,16 @@ function onBeforeInit(langClient: ExtendedLangClient) {
 export function activate(context: ExtensionContext): Promise<any> {
     ballerinaExtInstance.setContext(context);
     return ballerinaExtInstance.init(onBeforeInit).then(() => {
+        context.globalState.update('ballerinaVersion', "0.991.0");
+
+        // Enable Ballerina welcome
+        activateWelcome(ballerinaExtInstance);
+   
+        const previousVersion = context.globalState.get<string>('ballerinaVersion');
+        const pluginVersion = extensions.getExtension('ballerina.ballerina')!.packageJSON.version.split('-')[0];
+        void ballerinaExtInstance.showWelcomePage(pluginVersion, previousVersion);
+        context.globalState.update('ballerinaVersion', pluginVersion);
+            
         // start the features.
         // Enable Ballerina diagram
         activateDiagram(ballerinaExtInstance);
