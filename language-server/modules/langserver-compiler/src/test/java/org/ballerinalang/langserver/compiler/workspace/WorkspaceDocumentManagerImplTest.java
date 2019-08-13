@@ -29,7 +29,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.stream.Stream;
@@ -64,14 +63,14 @@ public class WorkspaceDocumentManagerImplTest {
     @Test
     public void testOpenFile() throws IOException, WorkspaceDocumentException {
         // Call open file
-        Optional<Lock> lock = documentManager.lockFile(filePath);
+        Lock lock = documentManager.lock();
         try {
             documentManager.openFile(filePath, readAll(filePath.toFile()));
             documentManager.openFile(docUpdatePath1, new String(Files.readAllBytes(docUpdatePath1)));
             documentManager.openFile(docUpdatePath2, new String(Files.readAllBytes(docUpdatePath2)));
             documentManager.openFile(docUpdatePath3, new String(Files.readAllBytes(docUpdatePath3)));
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
         // Test file opened
         Path foundPath = documentManager.getAllFilePaths().stream().filter(path -> {
@@ -160,11 +159,11 @@ public class WorkspaceDocumentManagerImplTest {
     public void testUpdateFile() throws IOException, WorkspaceDocumentException {
         String updateContent = readAll(filePath.toFile()) + "\nfunction foo(){\n}\n";
         // Update the file
-        Optional<Lock> lock = documentManager.lockFile(filePath);
+        Lock lock = documentManager.lock();
         try {
             documentManager.updateFile(filePath, updateContent);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
         // Call get file content
         String actualContent = documentManager.getFileContent(filePath);
@@ -174,12 +173,14 @@ public class WorkspaceDocumentManagerImplTest {
 
     @Test(dependsOnMethods = "testUpdateFile")
     public void testLockFile() {
-        Optional<Lock> lock = Optional.empty();
+        Lock lock = null;
         try {
-            lock = documentManager.lockFile(filePath);
-            Assert.assertTrue(lock.isPresent());
+            lock = documentManager.lock();
+            Assert.assertNotNull(lock);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            if (lock != null) {
+                lock.unlock();
+            }
         }
     }
 

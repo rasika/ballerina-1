@@ -36,7 +36,6 @@ import java.io.UnsupportedEncodingException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 
 import static org.ballerinalang.compiler.CompilerOptionName.COMPILER_PHASE;
@@ -66,8 +65,7 @@ public class ExtendedLSCompiler extends LSModuleCompiler {
      */
     public static BallerinaFile compileContent(String content, CompilerPhase phase) throws CompilationFailedException {
         java.nio.file.Path filePath = LSCompilerUtil.createTempFile(LSCompilerUtil.UNTITLED_BAL);
-        Optional<Lock> exModeLock = docManager.enableExplicitMode(filePath);
-        Optional<Lock> fileLock = docManager.lockFile(filePath);
+        Lock exModeLock = docManager.enableExplicitMode(filePath);
         try {
             docManager.updateFile(filePath, content);
             BallerinaFile bFile = compileFile(filePath, phase);
@@ -76,8 +74,7 @@ public class ExtendedLSCompiler extends LSModuleCompiler {
         } catch (WorkspaceDocumentException e) {
             throw new CompilationFailedException("Error occurred while compiling file:" + filePath.toString(), e);
         } finally {
-            docManager.disableExplicitMode(exModeLock.orElse(null));
-            fileLock.ifPresent(Lock::unlock);
+            docManager.disableExplicitMode(exModeLock);
         }
     }
 

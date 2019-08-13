@@ -81,7 +81,7 @@ public class ReferencesUtil {
             return new ArrayList<>();
         }
         Path compilationPath = getUntitledFilePath(defFilePath.toString()).orElse(defFilePath.get());
-        Optional<Lock> lock = docManager.lockFile(compilationPath);
+        Lock lock = docManager.lock();
         Class errStrategy = LSCustomErrorStrategy.class;
         try {
             context.put(DocumentServiceKeys.FILE_URI_KEY, fileUri);
@@ -97,7 +97,7 @@ public class ReferencesUtil {
 
             return LSModuleCompiler.getBLangPackages(context, docManager, true, errStrategy, compileProject, false);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
     }
 

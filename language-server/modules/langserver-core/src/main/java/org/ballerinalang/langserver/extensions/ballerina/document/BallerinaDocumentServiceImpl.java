@@ -107,7 +107,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
             return CompletableFuture.supplyAsync(() -> reply);
         }
         Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
-        Optional<Lock> lock = documentManager.lockFile(compilationPath);
+        Lock lock = documentManager.lock();
 
         try {
             String fileContent = documentManager.getFileContent(compilationPath);
@@ -118,7 +118,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
             reply.isIsError(true);
             logger.error("error: while processing service definition at converter service: " + e.getMessage(), e);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
 
         return CompletableFuture.supplyAsync(() -> reply);
@@ -139,8 +139,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
         if (!filePath.isPresent()) {
             return;
         }
-        Optional<Lock> lock = documentManager.lockFile(filePath.get());
-
+        Lock lock = documentManager.lock();
         try {
             //Generate compilation unit for provided Open Api Sep JSON
             File tempOasJsonFile = getOpenApiFile(params.getOASDefinition());
@@ -206,7 +205,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
         } catch (Exception ex) {
             logger.error("error: while processing service definition at converter service: " + ex.getMessage(), ex);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
 
     }
@@ -220,8 +219,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
             return CompletableFuture.supplyAsync(() -> reply);
         }
         Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
-        Optional<Lock> lock = documentManager.lockFile(compilationPath);
-
+        Lock lock = documentManager.lock();
         try {
             String fileContent = documentManager.getFileContent(compilationPath);
             BallerinaFile ballerinaFile = ExtendedLSCompiler.compileContent(fileContent, CompilerPhase.CODE_ANALYZE);
@@ -249,7 +247,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
         } catch (CompilationFailedException | WorkspaceDocumentException e) {
             logger.error("error: while processing service definition at converter service: " + e.getMessage());
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
 
         return CompletableFuture.supplyAsync(() -> reply);
@@ -263,8 +261,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
         if (!filePath.isPresent()) {
             return CompletableFuture.supplyAsync(() -> reply);
         }
-        Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
-        Optional<Lock> lock = documentManager.lockFile(compilationPath);
+        Lock lock = documentManager.lock();
         try {
             LSContext astContext = new LSServiceOperationContext();
             astContext.put(DocumentServiceKeys.FILE_URI_KEY, fileUri);
@@ -275,7 +272,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
         } catch (CompilationFailedException | JSONGenerationException e) {
             reply.setParseSuccess(false);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
         return CompletableFuture.supplyAsync(() -> reply);
     }
@@ -289,7 +286,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
             return CompletableFuture.supplyAsync(() -> reply);
         }
         Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
-        Optional<Lock> lock = documentManager.lockFile(compilationPath);
+        Lock lock = documentManager.lock();
         try {
             // calculate range to replace
             String fileContent = documentManager.getFileContent(compilationPath);
@@ -326,7 +323,7 @@ public class BallerinaDocumentServiceImpl implements BallerinaDocumentService {
                 logger.error("Error while tree modification source gen" + ((msg != null) ? ": " + msg : ""), e);
             }
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
         return CompletableFuture.supplyAsync(() -> reply);
     }

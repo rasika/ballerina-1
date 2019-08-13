@@ -31,7 +31,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -44,7 +43,9 @@ import java.util.stream.Collectors;
  */
 public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
 
-    private volatile Map<Path, DocumentPair> documentList = new ConcurrentHashMap<>();
+    private Lock lock = new ReentrantLock(true);
+
+    private volatile Map<Path, WorkspaceDocument> documentList = new ConcurrentHashMap<>();
 
     private static final WorkspaceDocumentManagerImpl INSTANCE = new WorkspaceDocumentManagerImpl();
 
@@ -62,7 +63,7 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     public boolean isFileOpen(Path filePath) {
         return filePath != null
                 && documentList.containsKey(filePath)
-                && documentList.get(filePath).getDocument().isPresent();
+                && documentList.get(filePath) != null;
     }
 
     /**
@@ -75,7 +76,7 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
                     "File " + filePath.toString() + " is already opened in document manager."
             );
         }
-        documentList.put(filePath, new DocumentPair(new WorkspaceDocument(filePath, content)));
+        documentList.put(filePath, new WorkspaceDocument(filePath, content));
         LSDocument document = new LSDocument(filePath.toUri().toString());
         if (document.isWithinProject()) {
             rescanProjectRoot(filePath);
@@ -88,7 +89,7 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     @Override
     public void updateFile(Path filePath, String updatedContent) throws WorkspaceDocumentException {
         if (isFileOpen(filePath)) {
-            documentList.get(filePath).getDocument().ifPresent(document -> document.setContent(updatedContent));
+            documentList.get(filePath).setContent(updatedContent);
         } else {
             throw new WorkspaceDocumentException("File " + filePath.toString() + " is not opened in document manager.");
         }
@@ -100,7 +101,7 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     @Override
     public void updateFileRange(Path filePath, Range range, String updatedContent) throws WorkspaceDocumentException {
         if (isFileOpen(filePath)) {
-            documentList.get(filePath).getDocument().ifPresent(document -> document.setContent(range, updatedContent));
+            documentList.get(filePath).setContent(range, updatedContent);
         } else {
             throw new WorkspaceDocumentException("File " + filePath.toString() + " is not opened in document manager.");
         }
@@ -112,7 +113,7 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     @Override
     public void setCodeLenses(Path filePath, List<CodeLens> codeLens) throws WorkspaceDocumentException {
         if (isFileOpen(filePath)) {
-            documentList.get(filePath).getDocument().ifPresent(document -> document.setCodeLenses(codeLens));
+            documentList.get(filePath).setCodeLenses(codeLens);
         } else {
             throw new WorkspaceDocumentException("File " + filePath.toString() + " is not opened in document manager.");
         }
@@ -124,7 +125,7 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     @Override
     public void setPrunedContent(Path filePath, String prunedSource) throws WorkspaceDocumentException {
         if (isFileOpen(filePath)) {
-            documentList.get(filePath).getDocument().ifPresent(document -> document.setPrunedContent(prunedSource));
+            documentList.get(filePath).setPrunedContent(prunedSource);
         } else {
             throw new WorkspaceDocumentException("File " + filePath.toString() + " is not opened in document manager.");
         }
@@ -136,10 +137,8 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     @Override
     public void closeFile(Path filePath) throws WorkspaceDocumentException {
         if (isFileOpen(filePath)) {
-            Lock lock = documentList.get(filePath).getLock();
             try {
                 lock.lock();
-                documentList.get(filePath).setDocument(null);
                 documentList.remove(filePath);
             } finally {
                 lock.unlock();
@@ -160,16 +159,16 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     @Override
     public List<CodeLens> getCodeLenses(Path filePath) {
         if (isFileOpen(filePath) && documentList.get(filePath) != null) {
-            return documentList.get(filePath).getDocument().map(WorkspaceDocument::getCodeLenses).orElse(null);
+            return documentList.get(filePath).getCodeLenses();
         }
         return new ArrayList<>();
     }
 
     @Override
     public LSDocument getLSDocument(Path filePath) throws WorkspaceDocumentException {
-        DocumentPair documentPair = documentList.get(filePath);
-        if (isFileOpen(filePath) && documentPair != null && documentPair.getDocument().isPresent()) {
-            return documentPair.getDocument().get().getLSDocument();
+        WorkspaceDocument document = documentList.get(filePath);
+        if (isFileOpen(filePath) && document != null) {
+            return document.getLSDocument();
         }
         throw new WorkspaceDocumentException("Cannot find LSDocument for the give file path: ["
                 + filePath.toString() + "]");
@@ -181,7 +180,7 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     @Override
     public String getFileContent(Path filePath) throws WorkspaceDocumentException {
         if (isFileOpen(filePath) && documentList.get(filePath) != null) {
-            return documentList.get(filePath).getDocument().map(WorkspaceDocument::getContent).orElse(null);
+            return documentList.get(filePath).getContent();
         }
         return readFromFileSystem(filePath);
     }
@@ -189,25 +188,8 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     /**
      * {@inheritDoc}
      */
-    @Override
-    public Optional<Lock> lockFile(Path filePath) {
-        Optional<Lock> lock = Optional.ofNullable(filePath).map(path -> Optional.ofNullable(documentList.get(path))
-                .map(DocumentPair::getLock)
-                .orElseGet(() -> {
-                    synchronized (this) {
-                        // No lock found, double-check
-                        return Optional.ofNullable(documentList.get(path))
-                                .map(DocumentPair::getLock)
-                                .orElseGet(() -> {
-                                    // No lock found, create and return a new DocumentPair
-                                    DocumentPair docPair = new DocumentPair(null);
-                                    documentList.put(filePath, docPair);
-                                    return docPair.getLock();
-                                });
-                    }
-                })
-        );
-        lock.ifPresent(Lock::lock);
+    public Lock lock() {
+        lock.lock();
         return lock;
     }
 
@@ -217,7 +199,7 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
     @Override
     public Set<Path> getAllFilePaths() {
         return documentList.entrySet().stream()
-                .filter(entry -> entry.getValue().getDocument().isPresent())
+                .filter(entry -> entry.getValue() != null)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)).keySet();
     }
 
@@ -245,46 +227,5 @@ public class WorkspaceDocumentManagerImpl implements WorkspaceDocumentManager {
         Path projectRoot = Paths.get(LSCompilerUtil.getProjectRoot(filePath));
         LangServerFSProjectDirectory projectDirectory = LangServerFSProjectDirectory.getInstance(projectRoot, this);
         projectDirectory.rescanProjectRoot();
-    }
-
-    /**
-     * This class holds workspace document and its lock.
-     */
-    public static class DocumentPair {
-
-        private final Lock lock;
-        private WorkspaceDocument document;
-
-        public DocumentPair(WorkspaceDocument document) {
-            this.document = document;
-            lock = new ReentrantLock(true);
-        }
-
-        /**
-         * Returns the associated lock for the file.
-         *
-         * @return {@link Lock}
-         */
-        public Lock getLock() {
-            return this.lock;
-        }
-
-        /**
-         * Returns the workspace document.
-         *
-         * @return {@link WorkspaceDocumentManager}
-         */
-        public Optional<WorkspaceDocument> getDocument() {
-            return Optional.ofNullable(this.document);
-        }
-
-        /**
-         * Set workspace document.
-         *
-         * @param document {@link WorkspaceDocument}
-         */
-        public void setDocument(WorkspaceDocument document) {
-            this.document = document;
-        }
     }
 }

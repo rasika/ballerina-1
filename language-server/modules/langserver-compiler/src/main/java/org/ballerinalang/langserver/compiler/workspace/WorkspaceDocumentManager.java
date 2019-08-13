@@ -23,7 +23,6 @@ import org.eclipse.lsp4j.Range;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
@@ -174,18 +173,17 @@ public interface WorkspaceDocumentManager {
      *
      * Usage example:
      * <pre>
-     * Optional&lt;Lock&gt; lock = documentManager.lockFile(filePath);
+     * Lock lock = documentManager.lock();
      * try {
      *     //your code
      * } finally {
-     *     lock.ifPresent(Lock:unlock);
+     *     lock.unlock();
      * }
      * </pre>
      *
-     * @param filePath Path of the file
      * @return {@link Lock} retrieving a lock for the file. You must call Lock.unlock() once you are done with the work.
      */
-    Optional<Lock> lockFile(Path filePath);
+    Lock lock();
 
     /**
      * Returns a list of all file paths.

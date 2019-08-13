@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.stream.Stream;
@@ -50,11 +49,11 @@ public class ExtendedWorkspaceDocumentManagerImplTest {
     @Test(enabled = false)
     public void testOpenFile() throws IOException, WorkspaceDocumentException {
         // Call open file
-        Optional<Lock> lock = documentManager.lockFile(filePath);
+        Lock lock = documentManager.lock();
         try {
             documentManager.openFile(filePath, readAll(filePath.toFile()));
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
         // Test file opened
         Path foundPath = documentManager.getAllFilePaths().stream().filter(path -> {
@@ -113,11 +112,11 @@ public class ExtendedWorkspaceDocumentManagerImplTest {
     public void testUpdateFile() throws IOException, WorkspaceDocumentException {
         String updateContent = readAll(filePath.toFile()) + "\nfunction foo(){\n}\n";
         // Update the file
-        Optional<Lock> lock = documentManager.lockFile(filePath);
+        Lock lock = documentManager.lock();
         try {
             documentManager.updateFile(filePath, updateContent);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
         // Call get file content
         String actualContent = documentManager.getFileContent(filePath);
@@ -127,12 +126,14 @@ public class ExtendedWorkspaceDocumentManagerImplTest {
 
     @Test(dependsOnMethods = "testUpdateFile", enabled = false)
     public void testLockFile() {
-        Optional<Lock> lock = Optional.empty();
+        Lock lock = null;
         try {
-            lock = documentManager.lockFile(filePath);
-            Assert.assertTrue(lock.isPresent());
+            lock = documentManager.lock();
+            Assert.assertNotNull(lock);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            if (lock != null) {
+                lock.unlock();
+            }
         }
     }
 
@@ -156,14 +157,14 @@ public class ExtendedWorkspaceDocumentManagerImplTest {
     @Test(dependsOnMethods = "testCloseFile", enabled = false)
     public void testExplicitMode() throws WorkspaceDocumentException {
         String newContent = "test";
-        Optional<Lock> lock = documentManager.enableExplicitMode(filePath);
+        Lock lock = documentManager.enableExplicitMode(filePath);
         try {
             //Update content in explicit mode
             documentManager.updateFile(filePath, newContent);
             //Check content in explicit mode
             Assert.assertEquals(newContent, documentManager.getFileContent(filePath));
         } finally {
-            documentManager.disableExplicitMode(lock.orElse(null));
+            documentManager.disableExplicitMode(lock);
         }
         //Check the content in other mode
         Assert.assertNotEquals(newContent, documentManager.getFileContent(filePath));

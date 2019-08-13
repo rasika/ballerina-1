@@ -156,8 +156,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
             if (!completionPath.isPresent()) {
                 return Either.forLeft(completions);
             }
-            Path compilationPath = getUntitledFilePath(completionPath.toString()).orElse(completionPath.get());
-            Optional<Lock> lock = documentManager.lockFile(compilationPath);
+            Lock lock = documentManager.lock();
             context.put(DocumentServiceKeys.POSITION_KEY, position);
             context.put(DocumentServiceKeys.FILE_URI_KEY, fileUri);
             context.put(CompletionKeys.DOC_MANAGER_KEY, documentManager);
@@ -188,7 +187,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 String msg = "Operation 'text/completion' failed!";
                 logError(msg, e, languageServer.getClient(), position.getTextDocument(), position.getPosition());
             } finally {
-                lock.ifPresent(Lock::unlock);
+                lock.unlock();
             }
             return Either.forLeft(completions);
         });
@@ -231,15 +230,12 @@ class BallerinaTextDocumentService implements TextDocumentService {
             if (!sigFilePath.isPresent()) {
                 return new SignatureHelp();
             }
-            Path compilationPath = getUntitledFilePath(sigFilePath.toString()).orElse(sigFilePath.get());
-            Optional<Lock> lock = documentManager.lockFile(compilationPath);
-
+            Lock lock = documentManager.lock();
             LSServiceOperationContext context = new LSServiceOperationContext();
             context.put(DocumentServiceKeys.POSITION_KEY, position);
             context.put(DocumentServiceKeys.FILE_URI_KEY, uri);
             context.put(SignatureKeys.SIGNATURE_HELP_CAPABILITIES_KEY, clientCapabilities.getSignatureHelp());
             context.put(CompletionKeys.DOC_MANAGER_KEY, documentManager);
-
             try {
                 // Prepare content for source-prune
                 // This fix added to handle cases such as `foo(` that causes pruner to remove all RHS tokens.
@@ -287,7 +283,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 logError(msg, e, languageServer.getClient(), position.getTextDocument(), position.getPosition());
                 return new SignatureHelp();
             } finally {
-                lock.ifPresent(Lock::unlock);
+                lock.unlock();
             }
         });
     }
@@ -351,8 +347,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
             if (!docSymbolFilePath.isPresent()) {
                 return symbols;
             }
-            Path compilationPath = getUntitledFilePath(docSymbolFilePath.toString()).orElse(docSymbolFilePath.get());
-            Optional<Lock> lock = documentManager.lockFile(compilationPath);
+            Lock lock = documentManager.lock();
             try {
                 LSServiceOperationContext symbolsContext = new LSServiceOperationContext();
                 symbolsContext.put(DocumentServiceKeys.FILE_URI_KEY, fileUri);
@@ -377,7 +372,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 logError(msg, e, languageServer.getClient(), params.getTextDocument(), (Position) null);
                 return symbols;
             } finally {
-                lock.ifPresent(Lock::unlock);
+                lock.unlock();
             }
         });
     }
@@ -392,8 +387,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
             if (!filePath.isPresent()) {
                 return new ArrayList<>();
             }
-            Path compilationPath = getUntitledFilePath(filePath.get().toString()).orElse(filePath.get());
-            Optional<Lock> lock = documentManager.lockFile(compilationPath);
+            Lock lock = documentManager.lock();
             try {
                 LSDocument document = documentManager.getLSDocument(filePath.get());
                 int line = params.getRange().getStart().getLine();
@@ -447,7 +441,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 logError(msg, e, languageServer.getClient(), params.getTextDocument(), range.getStart(),
                          range.getEnd());
             } finally {
-                lock.ifPresent(Lock::unlock);
+                lock.unlock();
             }
             return actions.stream().map(
                     (Function<CodeAction, Either<Command, CodeAction>>) Either::forRight).collect(Collectors.toList());
@@ -471,7 +465,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 return new ArrayList<>();
             }
             Path compilationPath = getUntitledFilePath(docSymbolFilePath.toString()).orElse(docSymbolFilePath.get());
-            Optional<Lock> lock = documentManager.lockFile(compilationPath);
+            Lock lock = documentManager.lock();
             try {
                 // Compile source document
                 lenses = CodeLensUtil.compileAndGetCodeLenses(fileUri, documentManager);
@@ -487,7 +481,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 // Source compilation failed, serve from cache
                 return documentManager.getCodeLenses(compilationPath);
             } finally {
-                lock.ifPresent(Lock::unlock);
+                lock.unlock();
             }
         });
     }
@@ -508,8 +502,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
             if (!formattingFilePath.isPresent()) {
                 return Collections.singletonList(textEdit);
             }
-            Path compilationPath = getUntitledFilePath(formattingFilePath.toString()).orElse(formattingFilePath.get());
-            Optional<Lock> lock = documentManager.lockFile(compilationPath);
+            Lock lock = documentManager.lock();
             try {
                 LSServiceOperationContext formatCtx = new LSServiceOperationContext();
                 formatCtx.put(DocumentServiceKeys.FILE_URI_KEY, fileUri);
@@ -546,7 +539,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 logError(msg, e, languageServer.getClient(), params.getTextDocument(), (Position) null);
                 return Collections.singletonList(textEdit);
             } finally {
-                lock.ifPresent(Lock::unlock);
+                lock.unlock();
             }
         });
     }
@@ -579,9 +572,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
             List<Location> implementationLocations = new ArrayList<>();
             LSServiceOperationContext context = new LSServiceOperationContext();
             LSDocument lsDocument = new LSDocument(fileUri);
-            Path implementationPath = lsDocument.getPath();
-            Path compilationPath = getUntitledFilePath(implementationPath.toString()).orElse(implementationPath);
-            Optional<Lock> lock = documentManager.lockFile(compilationPath);
+            Lock lock = documentManager.lock();
 
             context.put(DocumentServiceKeys.POSITION_KEY, position);
             context.put(DocumentServiceKeys.FILE_URI_KEY, fileUri);
@@ -598,7 +589,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 String msg = "Operation 'text/implementation' failed!";
                 logError(msg, e, languageServer.getClient(), position.getTextDocument(), position.getPosition());
             } finally {
-                lock.ifPresent(Lock::unlock);
+                lock.unlock();
             }
 
             return implementationLocations;
@@ -617,7 +608,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
         if (compilationPath != null) {
             String content = params.getTextDocument().getText();
             // TODO: check the untitled file path issue
-            Optional<Lock> lock = documentManager.lockFile(compilationPath);
+            Lock lock = documentManager.lock();
             try {
                 documentManager.openFile(Paths.get(new URL(docUri).toURI()), content);
                 LanguageClient client = this.languageServer.getClient();
@@ -635,7 +626,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                 TextDocumentIdentifier identifier = new TextDocumentIdentifier(params.getTextDocument().getUri());
                 logError(msg, e, languageServer.getClient(), identifier, (Position) null);
             } finally {
-                lock.ifPresent(Lock::unlock);
+                lock.unlock();
             }
         }
     }
@@ -648,7 +639,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
             return;
         }
         Path compilationPath = getUntitledFilePath(changedPath.toString()).orElse(changedPath.get());
-        Optional<Lock> lock = documentManager.lockFile(compilationPath);
+        Lock lock = documentManager.lock();
         try {
             // Update content
             List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
@@ -667,7 +658,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
             LanguageClient client = this.languageServer.getClient();
             this.diagPushDebouncer.call(compilationPath, () -> {
                 // Need to lock since debouncer triggers later
-                Optional<Lock> nLock = documentManager.lockFile(compilationPath);
+                Lock nLock = documentManager.lock();
                 try {
                     LSServiceOperationContext context = new LSServiceOperationContext();
                     String fileURI = params.getTextDocument().getUri();
@@ -677,7 +668,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
                     String msg = "Computing 'diagnostics' failed!";
                     logError(msg, e, client, params.getTextDocument(), (Position) null);
                 } finally {
-                    nLock.ifPresent(Lock::unlock);
+                    nLock.unlock();
                 }
             });
         } catch (UserErrorException e) {
@@ -686,7 +677,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
             String msg = "Operation 'text/didChange' failed!";
             logError(msg, e, languageServer.getClient(), params.getTextDocument(), (Position) null);
         } finally {
-            lock.ifPresent(Lock::unlock);
+            lock.unlock();
         }
     }
 

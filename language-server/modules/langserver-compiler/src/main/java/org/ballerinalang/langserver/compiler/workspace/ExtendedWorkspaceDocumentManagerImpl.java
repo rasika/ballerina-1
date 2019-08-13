@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -179,9 +178,9 @@ public class ExtendedWorkspaceDocumentManagerImpl extends WorkspaceDocumentManag
      *
      * @see ExtendedWorkspaceDocumentManagerImpl#disableExplicitMode(Lock)
      */
-    public Optional<Lock> enableExplicitMode(Path tempFile) {
+    public Lock enableExplicitMode(Path tempFile) {
         // Acquire a lock for the temp-file
-        Optional<Lock> lock = super.lockFile(tempFile);
+        Lock lock = super.lock();
         if (tempDocument == null) {
             tempDocument = new WorkspaceDocument(tempFile, "", true);
         } else {
@@ -211,6 +210,6 @@ public class ExtendedWorkspaceDocumentManagerImpl extends WorkspaceDocumentManag
     public void disableExplicitMode(Lock lock) {
         this.isExplicitMode = false;
         // Release the lock of the temp-file
-        Optional.ofNullable(lock).ifPresent(Lock::unlock);
+        lock.unlock();
     }
 }
