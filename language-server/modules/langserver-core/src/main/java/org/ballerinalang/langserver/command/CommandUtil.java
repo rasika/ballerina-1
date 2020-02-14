@@ -590,6 +590,17 @@ public class CommandUtil {
         return null;
     }
 
+    public static CodeAction getAIDataMapperCommand(LSDocumentIdentifier document, Diagnostic diagnostic,
+                                                         LSContext context) {
+        // TODO: Complete the command and code action
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        String commandTitle = "AI Data Mapper";
+        CodeAction action = new CodeAction(commandTitle);
+        action.setKind(CodeActionKind.QuickFix);
+        action.setDiagnostics(diagnostics);
+        return action;
+    }
+
     private static BLangFunction getFunctionNode(int line, int column, LSDocumentIdentifier document,
                                                  WorkspaceDocumentManager docManager, LSContext context)
             throws CompilationFailedException {
