@@ -592,13 +592,69 @@ public class CommandUtil {
 
     public static CodeAction getAIDataMapperCommand(LSDocumentIdentifier document, Diagnostic diagnostic,
                                                          LSContext context) {
-        // TODO: Complete the command and code action
-        List<Diagnostic> diagnostics = new ArrayList<>();
-        String commandTitle = "AI Data Mapper";
-        CodeAction action = new CodeAction(commandTitle);
-        action.setKind(CodeActionKind.QuickFix);
-        action.setDiagnostics(diagnostics);
-        return action;
+//         TODO: Complete the command and code action
+
+        String diagnosticMessage = diagnostic.getMessage();
+        Position position = diagnostic.getRange().getStart();
+//        int line = position.getLine();
+//        int column = position.getCharacter();
+//        String line_string = position.toString();
+        String uri = context.get(CodeActionKeys.FILE_URI_KEY);
+        String diagnosedContent = getDiagnosedContent(diagnostic, context, document);
+
+        try {
+
+            Position afterAliasPos = offsetInvocation(diagnosedContent, position);
+            SymbolReferencesModel.Reference refAtCursor = getReferenceAtCursor(context, document, afterAliasPos);
+            BSymbol symbolAtCursor = refAtCursor.getSymbol();
+
+            /////////////////
+//            WorkspaceDocumentManager docManager = context.get(CodeActionKeys.DOCUMENT_MANAGER_KEY);
+//            BLangNode bLangNode = refAtCursor.getbLangNode();
+//            Position startPos = new Position(bLangNode.pos.sLine - 1, bLangNode.pos.sCol - 1);
+//            Position endPosWithSemiColon = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol);
+//            Position endPos = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol - 1);
+//            Range newTextRange = new Range(startPos, endPosWithSemiColon);
+//            int numberOfLinesInFile = docManager.getFileContent(docManager.getAllFilePaths().iterator().next()).split("\n").length;
+//            Position startPosOfLastLine = new Position(numberOfLinesInFile + 3, 0);
+//            Position endPosOfLastLine = new Position(numberOfLinesInFile + 3, 1);
+//            Range newFunctionRange = new Range(startPosOfLastLine, endPosOfLastLine);
+            /////////////////
+
+            int symbolTag = symbolAtCursor.type.tag;
+            String variableAtCursor = symbolAtCursor.name.value;
+
+            if (symbolTag == 12) { // tag 12 is user defined records(?)
+                Matcher matcher = CommandConstants.INCOMPATIBLE_TYPE_PATTERN.matcher(diagnosticMessage);
+                if (matcher.find() && matcher.groupCount() > 1) {
+//                    String foundTypeLeft = matcher.group(1);
+//                    String foundTypeRight = matcher.group(2);
+
+                    List<TextEdit> fEdits = getAIDataMapperCodeActionEdits(context,refAtCursor, matcher, variableAtCursor);
+//                    List<TextEdit> fEdits = new ArrayList<>();
+//                    String generatedFunctionName =  String.format("mapTo%s(%s);", foundTypeLeft, variableAtCursor);
+//                    TextEdit functionNameEdit = new TextEdit(newTextRange, generatedFunctionName);
+//                    fEdits.add(functionNameEdit);
+//                    String generatedFunction = String.format("\n\nfunction mapTo%s(%s %s) returns %s {\n\t%s %s = new %s;\n\treturn %s;\n}", foundTypeLeft, foundTypeRight, variableAtCursor, foundTypeLeft, foundTypeLeft, foundTypeLeft+"_1", foundTypeLeft, foundTypeLeft+"_1");
+//                    TextEdit functionEdit = new TextEdit(newFunctionRange, generatedFunction);
+//                    fEdits.add(functionEdit);
+
+                    List<Diagnostic> diagnostics = new ArrayList<>();
+                    String commandTitle = "AI Data Mapper";
+                    CodeAction action = new CodeAction(commandTitle);
+                    action.setKind(CodeActionKind.QuickFix);
+                    action.setEdit(new WorkspaceEdit(Collections.singletonList(Either.forLeft(
+                            new TextDocumentEdit(new VersionedTextDocumentIdentifier(uri, null), fEdits)))));
+                    action.setDiagnostics(diagnostics);
+                    return action;
+                }
+            } else {
+                return null;
+            }
+        } catch (CompilationFailedException | WorkspaceDocumentException e) { // | IOException e) {
+            // ignore
+        }
+        return null;
     }
 
     private static BLangFunction getFunctionNode(int line, int column, LSDocumentIdentifier document,
@@ -1148,5 +1204,39 @@ public class CommandUtil {
             return argumentV;
         }
 
+    }
+
+    private static List<TextEdit> getAIDataMapperCodeActionEdits(LSContext context, SymbolReferencesModel.Reference refAtCursor, Matcher matcher, String variableAtCursor){
+        List<TextEdit> fEdits = new ArrayList<>();
+        String foundTypeLeft = matcher.group(1);
+        String foundTypeRight = matcher.group(2);
+        try {
+            WorkspaceDocumentManager docManager = context.get(CodeActionKeys.DOCUMENT_MANAGER_KEY);
+            BLangNode bLangNode = refAtCursor.getbLangNode();
+
+            // Insert function call in the code where error is found
+            Position startPos = new Position(bLangNode.pos.sLine - 1, bLangNode.pos.sCol - 1);
+            Position endPosWithSemiColon = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol);
+            Position endPos = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol - 1);
+            Range newTextRange = new Range(startPos, endPosWithSemiColon);
+
+            String generatedFunctionName =  String.format("mapTo%s(%s);", foundTypeLeft, variableAtCursor);
+            TextEdit functionNameEdit = new TextEdit(newTextRange, generatedFunctionName);
+            fEdits.add(functionNameEdit);
+
+            // Insert function declaration iat bottom of the file
+            int numberOfLinesInFile = docManager.getFileContent(docManager.getAllFilePaths().iterator().next()).split("\n").length;
+            Position startPosOfLastLine = new Position(numberOfLinesInFile + 3, 0);
+            Position endPosOfLastLine = new Position(numberOfLinesInFile + 3, 1);
+            Range newFunctionRange = new Range(startPosOfLastLine, endPosOfLastLine);
+
+            String generatedFunction = String.format("\n\nfunction mapTo%s(%s %s) returns %s {\n\t%s %s = new %s;\n\treturn %s;\n}", foundTypeLeft, foundTypeRight, variableAtCursor, foundTypeLeft, foundTypeLeft, foundTypeLeft+"_1", foundTypeLeft, foundTypeLeft+"_1");
+            TextEdit functionEdit = new TextEdit(newFunctionRange, generatedFunction);
+            fEdits.add(functionEdit);
+
+        } catch (WorkspaceDocumentException e) {
+            // ignore
+        }
+        return fEdits;
     }
 }
