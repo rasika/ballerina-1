@@ -15,6 +15,9 @@
  */
 package org.ballerinalang.langserver.command;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -74,10 +77,7 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BInvokableSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BObjectTypeSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.types.BErrorType;
-import org.wso2.ballerinalang.compiler.semantics.model.types.BNilType;
-import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
-import org.wso2.ballerinalang.compiler.semantics.model.types.BUnionType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.*;
 import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
 import org.wso2.ballerinalang.compiler.tree.BLangFunction;
 import org.wso2.ballerinalang.compiler.tree.BLangImportPackage;
@@ -86,6 +86,7 @@ import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangService;
 import org.wso2.ballerinalang.compiler.tree.BLangTypeDefinition;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangInvocation;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangSimpleVarRef;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangBlockStmt;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangReturn;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangStatement;
@@ -94,12 +95,13 @@ import org.wso2.ballerinalang.compiler.tree.types.BLangValueType;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
 import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 import org.wso2.ballerinalang.util.Flags;
+import sun.net.www.http.HttpClient;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.StringReader;
+import java.io.*;
 import java.lang.reflect.Field;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -126,6 +128,8 @@ import static org.ballerinalang.langserver.util.references.ReferencesUtil.getRef
  * Utilities for the command related operations.
  */
 public class CommandUtil {
+
+    private BType variableTypeMappingFrom;
 
     private CommandUtil() {
     }
@@ -592,65 +596,34 @@ public class CommandUtil {
 
     public static CodeAction getAIDataMapperCommand(LSDocumentIdentifier document, Diagnostic diagnostic,
                                                          LSContext context) {
-//         TODO: Complete the command and code action
-
-        String diagnosticMessage = diagnostic.getMessage();
+        /* TODO: Complete the command and code action */
         Position position = diagnostic.getRange().getStart();
-//        int line = position.getLine();
-//        int column = position.getCharacter();
-//        String line_string = position.toString();
-        String uri = context.get(CodeActionKeys.FILE_URI_KEY);
         String diagnosedContent = getDiagnosedContent(diagnostic, context, document);
 
         try {
-
             Position afterAliasPos = offsetInvocation(diagnosedContent, position);
             SymbolReferencesModel.Reference refAtCursor = getReferenceAtCursor(context, document, afterAliasPos);
-            BSymbol symbolAtCursor = refAtCursor.getSymbol();
+            int symbolAtCursorTag = refAtCursor.getSymbol().type.tag;
+//            int  = symbolAtCursor.type.tag;
 
-            /////////////////
-//            WorkspaceDocumentManager docManager = context.get(CodeActionKeys.DOCUMENT_MANAGER_KEY);
-//            BLangNode bLangNode = refAtCursor.getbLangNode();
-//            Position startPos = new Position(bLangNode.pos.sLine - 1, bLangNode.pos.sCol - 1);
-//            Position endPosWithSemiColon = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol);
-//            Position endPos = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol - 1);
-//            Range newTextRange = new Range(startPos, endPosWithSemiColon);
-//            int numberOfLinesInFile = docManager.getFileContent(docManager.getAllFilePaths().iterator().next()).split("\n").length;
-//            Position startPosOfLastLine = new Position(numberOfLinesInFile + 3, 0);
-//            Position endPosOfLastLine = new Position(numberOfLinesInFile + 3, 1);
-//            Range newFunctionRange = new Range(startPosOfLastLine, endPosOfLastLine);
-            /////////////////
+            if (symbolAtCursorTag == 12) { // tag 12 is user defined records or non-primitive types (?)
+                String commandTitle = "AI Data Mapper";
+                CodeAction action = new CodeAction(commandTitle);
 
-            int symbolTag = symbolAtCursor.type.tag;
-            String variableAtCursor = symbolAtCursor.name.value;
+                action.setKind(CodeActionKind.QuickFix);
 
-            if (symbolTag == 12) { // tag 12 is user defined records(?)
-                Matcher matcher = CommandConstants.INCOMPATIBLE_TYPE_PATTERN.matcher(diagnosticMessage);
-                if (matcher.find() && matcher.groupCount() > 1) {
-//                    String foundTypeLeft = matcher.group(1);
-//                    String foundTypeRight = matcher.group(2);
+                String uri = context.get(CodeActionKeys.FILE_URI_KEY);
+                List<TextEdit> fEdits = getAIDataMapperCodeActionEdits(document, context,refAtCursor, diagnostic);
+                action.setEdit(new WorkspaceEdit(Collections.singletonList(Either.forLeft(
+                        new TextDocumentEdit(new VersionedTextDocumentIdentifier(uri, null), fEdits)))));
 
-                    List<TextEdit> fEdits = getAIDataMapperCodeActionEdits(context,refAtCursor, matcher, variableAtCursor);
-//                    List<TextEdit> fEdits = new ArrayList<>();
-//                    String generatedFunctionName =  String.format("mapTo%s(%s);", foundTypeLeft, variableAtCursor);
-//                    TextEdit functionNameEdit = new TextEdit(newTextRange, generatedFunctionName);
-//                    fEdits.add(functionNameEdit);
-//                    String generatedFunction = String.format("\n\nfunction mapTo%s(%s %s) returns %s {\n\t%s %s = new %s;\n\treturn %s;\n}", foundTypeLeft, foundTypeRight, variableAtCursor, foundTypeLeft, foundTypeLeft, foundTypeLeft+"_1", foundTypeLeft, foundTypeLeft+"_1");
-//                    TextEdit functionEdit = new TextEdit(newFunctionRange, generatedFunction);
-//                    fEdits.add(functionEdit);
-
-                    List<Diagnostic> diagnostics = new ArrayList<>();
-                    String commandTitle = "AI Data Mapper";
-                    CodeAction action = new CodeAction(commandTitle);
-                    action.setKind(CodeActionKind.QuickFix);
-                    action.setEdit(new WorkspaceEdit(Collections.singletonList(Either.forLeft(
-                            new TextDocumentEdit(new VersionedTextDocumentIdentifier(uri, null), fEdits)))));
-                    action.setDiagnostics(diagnostics);
-                    return action;
-                }
+                List<Diagnostic> diagnostics = new ArrayList<>();
+                action.setDiagnostics(diagnostics);
+                return action;
             } else {
                 return null;
             }
+
         } catch (CompilationFailedException | WorkspaceDocumentException e) { // | IOException e) {
             // ignore
         }
@@ -1206,37 +1179,127 @@ public class CommandUtil {
 
     }
 
-    private static List<TextEdit> getAIDataMapperCodeActionEdits(LSContext context, SymbolReferencesModel.Reference refAtCursor, Matcher matcher, String variableAtCursor){
+    private static List<TextEdit> getAIDataMapperCodeActionEdits(LSDocumentIdentifier document, LSContext context, SymbolReferencesModel.Reference refAtCursor, Diagnostic diagnostic){
         List<TextEdit> fEdits = new ArrayList<>();
-        String foundTypeLeft = matcher.group(1);
-        String foundTypeRight = matcher.group(2);
-        try {
-            WorkspaceDocumentManager docManager = context.get(CodeActionKeys.DOCUMENT_MANAGER_KEY);
-            BLangNode bLangNode = refAtCursor.getbLangNode();
 
-            // Insert function call in the code where error is found
-            Position startPos = new Position(bLangNode.pos.sLine - 1, bLangNode.pos.sCol - 1);
-            Position endPosWithSemiColon = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol);
-            Position endPos = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol - 1);
-            Range newTextRange = new Range(startPos, endPosWithSemiColon);
+        String diagnosticMessage = diagnostic.getMessage();
+        Matcher matcher = CommandConstants.INCOMPATIBLE_TYPE_PATTERN.matcher(diagnosticMessage);
 
-            String generatedFunctionName =  String.format("mapTo%s(%s);", foundTypeLeft, variableAtCursor);
-            TextEdit functionNameEdit = new TextEdit(newTextRange, generatedFunctionName);
-            fEdits.add(functionNameEdit);
+        if (matcher.find() && matcher.groupCount() > 1) {
+            String foundTypeLeft = matcher.group(1);  // variable at left side of the equal sign
+            String foundTypeRight = matcher.group(2);  // variable at right side of the equal sign
 
-            // Insert function declaration iat bottom of the file
-            int numberOfLinesInFile = docManager.getFileContent(docManager.getAllFilePaths().iterator().next()).split("\n").length;
-            Position startPosOfLastLine = new Position(numberOfLinesInFile + 3, 0);
-            Position endPosOfLastLine = new Position(numberOfLinesInFile + 3, 1);
-            Range newFunctionRange = new Range(startPosOfLastLine, endPosOfLastLine);
+            try {
+                // Insert function call in the code where error is found
+                BLangNode bLangNode = refAtCursor.getbLangNode();
+                Position startPos = new Position(bLangNode.pos.sLine - 1, bLangNode.pos.sCol - 1);
+                Position endPosWithSemiColon = new Position(bLangNode.pos.eLine - 1, bLangNode.pos.eCol);
+                Range newTextRange = new Range(startPos, endPosWithSemiColon);
 
-            String generatedFunction = String.format("\n\nfunction mapTo%s(%s %s) returns %s {\n\t%s %s = new %s;\n\treturn %s;\n}", foundTypeLeft, foundTypeRight, variableAtCursor, foundTypeLeft, foundTypeLeft, foundTypeLeft+"_1", foundTypeLeft, foundTypeLeft+"_1");
-            TextEdit functionEdit = new TextEdit(newFunctionRange, generatedFunction);
-            fEdits.add(functionEdit);
+                BSymbol symbolAtCursor = refAtCursor.getSymbol();
+                String variableAtCursor = symbolAtCursor.name.value;
+                String generatedFunctionName = String.format("map%sTo%s(%s);", foundTypeRight, foundTypeLeft, variableAtCursor);
 
-        } catch (WorkspaceDocumentException e) {
-            // ignore
+                TextEdit functionNameEdit = new TextEdit(newTextRange, generatedFunctionName);
+                fEdits.add(functionNameEdit);
+
+                // Insert function declaration at the bottom of the file
+                WorkspaceDocumentManager docManager = context.get(CodeActionKeys.DOCUMENT_MANAGER_KEY);
+                String fileContent = docManager.getFileContent(docManager.getAllFilePaths().iterator().next());
+                String functionName = String.format("map%sTo%s (%s", foundTypeRight, foundTypeLeft, foundTypeRight);
+                int indexOfFunctionName = fileContent.indexOf(functionName);
+                if (indexOfFunctionName == -1) {
+                    int numberOfLinesInFile = fileContent.split("\n").length;
+                    Position startPosOfLastLine = new Position(numberOfLinesInFile + 3, 0);
+                    Position endPosOfLastLine = new Position(numberOfLinesInFile + 3, 1);
+                    Range newFunctionRange = new Range(startPosOfLastLine, endPosOfLastLine);
+
+                    String generatedRecordMappingFunction = getGeneratedRecordMappingFunction(bLangNode, document, context, diagnostic, symbolAtCursor, docManager, foundTypeLeft, foundTypeRight);
+                    TextEdit functionEdit = new TextEdit(newFunctionRange, generatedRecordMappingFunction);
+                    fEdits.add(functionEdit);
+                }
+
+            } catch (WorkspaceDocumentException e) {
+                // ignore
+            }
         }
         return fEdits;
     }
+
+    private static String getGeneratedRecordMappingFunction(BLangNode bLangNode, LSDocumentIdentifier document, LSContext context, Diagnostic diagnostic, BSymbol symbolAtCursor, WorkspaceDocumentManager docManager, String foundTypeLeft, String foundTypeRight){
+        String generatedRecordMappingFunction = "";
+        // Schema 1
+        BType variableTypeMappingFrom = symbolAtCursor.type;
+        List<BField> rightSchemaFields = ((BRecordType) variableTypeMappingFrom).fields;
+        JsonObject rightSchema = (JsonObject) recordToJSON(rightSchemaFields);
+
+        JsonObject rightRecordJSON = new JsonObject();
+        rightRecordJSON.addProperty("schema", foundTypeRight);
+        rightRecordJSON.addProperty("id", "dummy_id");
+        rightRecordJSON.addProperty("type", "object");
+        rightRecordJSON.add("properties", rightSchema);
+
+        // Schema 2
+        try {
+//            Position position = diagnostic.getRange().getStart();
+//            String lineContent = docManager.getFileContent(docManager.getAllFilePaths().iterator().next()).split("\n")[position.getLine()];
+//            int indexOfFoundTypeLeftInLine = lineContent.lastIndexOf(foundTypeLeft);
+//            Position leftTypeVariablePosition = new Position(position.getLine(), indexOfFoundTypeLeftInLine);
+//            BType variableTypeMappingTo = getReferenceAtCursor(context, document, leftTypeVariablePosition).getSymbol().type;
+//            List<BField> leftSchemaFields = ((BRecordType) variableTypeMappingTo).fields;
+            List<BField> leftSchemaFields = ((BRecordType) ((BLangSimpleVarRef) bLangNode).expectedType).fields;
+            JsonObject leftSchema = (JsonObject) recordToJSON(leftSchemaFields);
+
+            JsonObject leftRecordJSON = new JsonObject();
+            leftRecordJSON.addProperty("schema", foundTypeLeft);
+            leftRecordJSON.addProperty("id", "dummy_id");
+            leftRecordJSON.addProperty("type", "object");
+            leftRecordJSON.add("properties", leftSchema);
+
+            JsonArray schemas = new JsonArray();
+            schemas.add(leftRecordJSON);
+            schemas.add(rightRecordJSON);
+
+            String schemasToSend = schemas.toString();
+            ////////////////
+            URL url = new URL ("http://127.0.0.1:5000/uploader");
+            HttpURLConnection con = (HttpURLConnection)url.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Content-Type", "application/json; utf-8");
+            con.setRequestProperty("Accept", "application/json");
+            con.setDoOutput(true);
+
+            OutputStream os = con.getOutputStream();
+            os.write(schemasToSend.getBytes("UTF-8"));
+            os.close();
+
+            InputStream in = new BufferedInputStream(con.getInputStream());
+            String result = org.apache.commons.io.IOUtils.toString(in, "UTF-8");
+            generatedRecordMappingFunction = result;
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return generatedRecordMappingFunction;
+    }
+
+    private static JsonElement recordToJSON(List<BField> schemaFields){
+        JsonObject properties = new JsonObject();
+        for (BField attribute: schemaFields){
+            JsonObject fieldDetails = new JsonObject();
+            fieldDetails.addProperty("id", "dummy_id");
+            fieldDetails.addProperty("type", String.valueOf(attribute.type));
+
+            /* TODO: Do we need to go to lower levels? */
+//            if (attribute.type.tag == 12){
+//                fieldDetails.add("properties", recordToJSON(((BRecordType)attribute.type).fields));
+//            }
+            properties.add(String.valueOf(attribute.name), fieldDetails);
+        }
+
+        return properties;
+    }
+
 }
