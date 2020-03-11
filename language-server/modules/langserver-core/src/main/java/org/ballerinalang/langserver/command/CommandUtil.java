@@ -1241,12 +1241,6 @@ public class CommandUtil {
 
         // Schema 2
         try {
-//            Position position = diagnostic.getRange().getStart();
-//            String lineContent = docManager.getFileContent(docManager.getAllFilePaths().iterator().next()).split("\n")[position.getLine()];
-//            int indexOfFoundTypeLeftInLine = lineContent.lastIndexOf(foundTypeLeft);
-//            Position leftTypeVariablePosition = new Position(position.getLine(), indexOfFoundTypeLeftInLine);
-//            BType variableTypeMappingTo = getReferenceAtCursor(context, document, leftTypeVariablePosition).getSymbol().type;
-//            List<BField> leftSchemaFields = ((BRecordType) variableTypeMappingTo).fields;
             List<BField> leftSchemaFields = ((BRecordType) ((BLangSimpleVarRef) bLangNode).expectedType).fields;
             JsonObject leftSchema = (JsonObject) recordToJSON(leftSchemaFields);
 
@@ -1261,7 +1255,6 @@ public class CommandUtil {
             schemas.add(rightRecordJSON);
 
             String schemasToSend = schemas.toString();
-            ////////////////
             URL url = new URL ("http://127.0.0.1:5000/uploader");
             HttpURLConnection con = (HttpURLConnection)url.openConnection();
             con.setRequestMethod("POST");
@@ -1290,12 +1283,16 @@ public class CommandUtil {
         for (BField attribute: schemaFields){
             JsonObject fieldDetails = new JsonObject();
             fieldDetails.addProperty("id", "dummy_id");
-            fieldDetails.addProperty("type", String.valueOf(attribute.type));
+//            fieldDetails.addProperty("type", String.valueOf(attribute.type));
 
             /* TODO: Do we need to go to lower levels? */
-//            if (attribute.type.tag == 12){
-//                fieldDetails.add("properties", recordToJSON(((BRecordType)attribute.type).fields));
-//            }
+            if (attribute.type.tag == 12){
+                fieldDetails.addProperty("type", "ballerina_type");
+                fieldDetails.add("properties", recordToJSON(((BRecordType)attribute.type).fields));
+            } else {
+//                fieldDetails.addProperty("id", "dummy_id");
+                fieldDetails.addProperty("type", String.valueOf(attribute.type));
+            }
             properties.add(String.valueOf(attribute.name), fieldDetails);
         }
 
