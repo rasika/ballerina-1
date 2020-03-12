@@ -36,10 +36,14 @@ public class BLangFromClause extends BLangNode implements FromClauseNode {
     public BLangExpression collection;
 
     public VariableDefinitionNode variableDefinitionNode;
-    public BType varType; // T
+    public BType varType; // T || T|E
     public BType resultType; // map<T>
+    public BType errorType; // E
     public BType nillableResultType; // map<T>?
     public boolean isDeclaredWithVar;
+
+    public BLangFromClause() {
+    }
 
     @Override
     public ExpressionNode getCollection() {
@@ -79,5 +83,10 @@ public class BLangFromClause extends BLangNode implements FromClauseNode {
     @Override
     public void accept(BLangNodeVisitor visitor) {
         visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+        return "from " + variableDefinitionNode + " in " + collection;
     }
 }

@@ -34,6 +34,7 @@ CONST       : 'const' ;
 TYPEOF      : 'typeof';
 SOURCE      : 'source' ;
 ON          : 'on' ;
+FIELD       : 'field' ;
 
 TYPE_INT        : 'int' ;
 TYPE_BYTE       : 'byte' ;
@@ -97,7 +98,10 @@ WAIT        : 'wait' ;
 DEFAULT     : 'default' ;
 FROM        : 'from' { inQueryExpression = true; } ;
 SELECT      : {inQueryExpression}? 'select' { inQueryExpression = false; } ;
+DO          : {inQueryExpression}? 'do' { inQueryExpression = false; } ;
 WHERE       : {inQueryExpression}? 'where' ;
+LET         : 'let' ;
+DEPRECATED  : 'Deprecated';
 
 // Separators
 
@@ -346,7 +350,7 @@ EscapeSequence
 
 fragment
 UnicodeEscape
-    :   '\\' 'u' HexDigit HexDigit HexDigit HexDigit
+    :   '\\' 'u' LEFT_BRACE HexDigit+ RIGHT_BRACE
     ;
 
 // Blob Literal
@@ -482,6 +486,10 @@ ParameterDocumentationStart
 
 ReturnParameterDocumentationStart
     :   HASH DocumentationSpace? ADD DocumentationSpace* RETURN DocumentationSpace* SUB DocumentationSpace* -> pushMode(MARKDOWN_DOCUMENTATION)
+    ;
+
+DeprecatedDocumentation
+    :   HASH DocumentationSpace HASH DocumentationSpace DEPRECATED -> pushMode(MARKDOWN_DOCUMENTATION)
     ;
 
 // Whitespace and comments

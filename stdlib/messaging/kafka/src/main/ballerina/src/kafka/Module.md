@@ -13,7 +13,7 @@ import ballerina/io;
 import ballerina/kafka;
 import ballerina/lang. 'string;
 
-kafka:ConsumerConfig consumerConfigs = {
+kafka:ConsumerConfiguration consumerConfigs = {
     bootstrapServers:"localhost:9092",
     groupId:"group-id",
     topics:["test-kafka-topic"],
@@ -34,13 +34,15 @@ service kafkaService on consumer {
 }
 
 function processKafkaRecord(kafka:ConsumerRecord kafkaRecord) {
-    byte[] serializedMsg = kafkaRecord.value;
-    string | error msg = 'string:fromBytes(serializedMsg);
-    if (msg is string) {
-        // Print the retrieved Kafka record.
-        io:println("Topic: ", kafkaRecord.topic, " Received Message: ", msg);
-    } else {
-        log:printError("Error occurred while converting message data", msg);
+    var value = kafkaRecord.value;
+    if (value is byte[]) {
+        string | error msg = 'string:fromBytes(serializedMsg);
+        if (msg is string) {
+            // Print the retrieved Kafka record.
+            io:println("Topic: ", kafkaRecord.topic, " Received Message: ", msg);
+        } else {
+            log:printError("Error occurred while converting message data", msg);
+        }
     }
 }
 ````
@@ -52,7 +54,7 @@ Following is a simple program which publishes a message to 'test-kafka-topic' to
 ```ballerina
 import ballerina/kafka;
 
-kafka:ProducerConfig producerConfigs = {
+kafka:ProducerConfiguration producerConfigs = {
     // Here we create a producer configs with optional parameters 
     // client.id - used for broker side logging.
     // acks - number of acknowledgments for request complete,
