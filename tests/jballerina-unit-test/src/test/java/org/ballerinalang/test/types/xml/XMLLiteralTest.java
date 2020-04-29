@@ -48,6 +48,7 @@ import java.io.IOException;
  *
  * @since 0.94
  */
+@Test
 public class XMLLiteralTest {
 
     private CompileResult result;
@@ -87,29 +88,22 @@ public class XMLLiteralTest {
         // namespace conflict with package import
         BAssertUtil.validateError(negativeResult, index++, "redeclared symbol 'x'", 42, 5);
 
-        // get attributes from non-xml
-        BAssertUtil.validateError(negativeResult, index++, "incompatible types: expected 'xml', found 'map'", 47, 17);
-
-        // update attributes map
-        BAssertUtil.validateError(negativeResult, index++,
-                "xml attributes cannot be updated as a collection. update attributes one at a time", 52, 5);
-
         // update qname
-        BAssertUtil.validateError(negativeResult, index++, "cannot assign values to an xml qualified name", 57, 5);
+        BAssertUtil.validateError(negativeResult, index++, "cannot assign values to an xml qualified name", 47, 5);
 
         // use of undefined namespace for qname
-        BAssertUtil.validateError(negativeResult, index++, "undefined module 'ns0'", 65, 20);
+        BAssertUtil.validateError(negativeResult, index++, "cannot find xml namespace prefix 'ns0'", 55, 24);
 
         // define namespace with empty URI
         BAssertUtil.validateError(negativeResult, index++, "cannot bind prefix 'ns0' to the empty namespace name",
-                69, 5);
+                59, 5);
 
         // XML elements with mismatching start and end tags
         BAssertUtil.validateError(negativeResult, index++, "mismatching start and end tags found in xml element",
-                                  73, 18);
+                                  63, 18);
         // XML interpolation is not allowed to interpolate XML namespace attributes
-        BAssertUtil.validateError(negativeResult, index++, "xml namespaces cannot be interpolated", 82, 29);
-        BAssertUtil.validateError(negativeResult, index++, "xml namespaces cannot be interpolated", 82, 47);
+        BAssertUtil.validateError(negativeResult, index++, "xml namespaces cannot be interpolated", 72, 29);
+        BAssertUtil.validateError(negativeResult, index++, "xml namespaces cannot be interpolated", 72, 47);
         Assert.assertEquals(index, negativeResult.getErrorCount());
     }
 
@@ -407,7 +401,21 @@ public class XMLLiteralTest {
                 "<p:person xmlns:p=\"foo\" xmlns:q=\"bar\">hello</p:person>");
     }
 
-    @Test(description = "Test sequence of brackets in content of XML")
+
+    @Test
+    public void xmlWithDefaultNamespaceToString() {
+        BValue[] returns = BRunUtil.invoke(literalWithNamespacesResult, "XMLWithDefaultNamespaceToString");
+        Assert.assertEquals(returns[0].stringValue(),
+                "<Order xmlns=\"http://acme.company\" xmlns:acme=\"http://acme.company\">\n" +
+                        "        <OrderLines>\n" +
+                        "            <OrderLine acme:lineNo=\"334\" itemCode=\"334-2\"></OrderLine>\n" +
+                        "        </OrderLines>\n" +
+                        "        <ShippingAddress>\n" +
+                        "        </ShippingAddress>\n" +
+                        "    </Order>");
+    }
+
+    @Test (description = "Test sequence of brackets in content of XML")
     public void testBracketSequenceInXMLLiteral() {
         BValue[] returns = BRunUtil.invoke(result, "testBracketSequenceInXMLLiteral");
         Assert.assertTrue(returns[0] instanceof BXML);
@@ -415,7 +423,7 @@ public class XMLLiteralTest {
                 "{}{{ {{{ { } }} }}} - extra }<elem>{}{{</elem>");
     }
 
-    @Test(description = "Test interpolating xml using different types")
+    @Test (description = "Test interpolating xml using different types")
     public void testXMLLiteralInterpolation() {
         BValue[] returns = BRunUtil.invoke(result, "testInterpolatingVariousTypes");
         Assert.assertTrue(returns[0] instanceof BXML);
@@ -423,7 +431,7 @@ public class XMLLiteralTest {
                 "<elem>42|3.14|31.4444|this-is-a-string|<abc></abc></elem>");
     }
 
-    @Test(description = "Test interpolating xml when there are extra dollar signs")
+    @Test (description = "Test interpolating xml when there are extra dollar signs")
     public void testXMLLiteralWithExtraDollarSigns() {
         BValue[] returns = BRunUtil.invoke(result, "testDollarSignOnXMLLiteralTemplate");
         Assert.assertTrue(returns[0] instanceof BXML);

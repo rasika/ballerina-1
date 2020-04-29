@@ -80,7 +80,6 @@ import static org.wso2.ballerinalang.compiler.bir.codegen.JvmConstants.SIMPLE_VA
 import static org.wso2.ballerinalang.compiler.bir.codegen.JvmConstants.STREAM_VALUE;
 import static org.wso2.ballerinalang.compiler.bir.codegen.JvmConstants.STRING_UTILS;
 import static org.wso2.ballerinalang.compiler.bir.codegen.JvmConstants.STRING_VALUE;
-import static org.wso2.ballerinalang.compiler.bir.codegen.JvmConstants.TABLE_VALUE;
 import static org.wso2.ballerinalang.compiler.bir.codegen.JvmConstants.TYPEDESC_VALUE;
 import static org.wso2.ballerinalang.compiler.bir.codegen.JvmConstants.TYPE_CHECKER;
 import static org.wso2.ballerinalang.compiler.bir.codegen.JvmConstants.TYPE_CONVERTER;
@@ -130,7 +129,7 @@ public class JvmCastGen {
         } else if (targetType.jTag == JTypeTags.JDOUBLE) {
             generateCheckCastBToJDouble(mv, sourceType);
         } else if (targetType.jTag == JTypeTags.JREF) {
-            if (((JType.JRefType) targetType).typeValue.equals(B_STRING_VALUE)) {
+            if (!isBString && ((JType.JRefType) targetType).typeValue.equals(B_STRING_VALUE)) {
                 generateCheckCastBToJString(mv, sourceType);
             } else {
                 generateCheckCastBToJRef(mv, sourceType, targetType);
@@ -139,7 +138,7 @@ public class JvmCastGen {
             generateCheckCastBToJRef(mv, sourceType, targetType);
         } else {
             throw new BLangCompilerException(String.format("Casting is not supported from '%s' to 'java %s'",
-                    sourceType, targetType));
+                                                           sourceType, targetType));
         }
     }
 
@@ -147,10 +146,10 @@ public class JvmCastGen {
 
         if (TypeTags.isStringTypeTag(sourceType.tag)) {
             mv.visitMethodInsn(INVOKESTATIC, STRING_UTILS, "fromString",
-                    String.format("(L%s;)L%s;", STRING_VALUE, B_STRING_VALUE), false);
+                               String.format("(L%s;)L%s;", STRING_VALUE, B_STRING_VALUE), false);
         } else {
             throw new BLangCompilerException(String.format("Casting is not supported from '%s' to 'java byte'",
-                    sourceType));
+                                                           sourceType));
         }
     }
 
@@ -698,7 +697,10 @@ public class JvmCastGen {
         } else if (targetType.tag == TypeTags.JSON) {
             generateCheckCastToJSON(mv, sourceType);
             return;
-        } else if (sourceType.tag == TypeTags.XML && targetType.tag == TypeTags.MAP) {
+        } else if (targetType.tag == TypeTags.READONLY) {
+            generateCheckCastToReadonlyType(mv, sourceType, targetType);
+            return;
+        } else if (TypeTags.isXMLTypeTag(sourceType.tag) && targetType.tag == TypeTags.MAP) {
             generateXMLToAttributesMap(mv, sourceType);
             return;
         } else if (targetType.tag == TypeTags.FINITE) {
@@ -1075,15 +1077,13 @@ public class JvmCastGen {
             targetTypeClass = MAP_VALUE;
         } else if (targetType.tag == TypeTags.RECORD) {
             targetTypeClass = MAP_VALUE;
-        } else if (targetType.tag == TypeTags.TABLE) {
-            targetTypeClass = TABLE_VALUE;
         } else if (targetType.tag == TypeTags.STREAM) {
             targetTypeClass = STREAM_VALUE;
         } else if (targetType.tag == TypeTags.OBJECT) {
             targetTypeClass = OBJECT_VALUE;
         } else if (targetType.tag == TypeTags.ERROR) {
             targetTypeClass = ERROR_VALUE;
-        } else if (targetType.tag == TypeTags.XML) {
+        } else if (TypeTags.isXMLTypeTag(targetType.tag)) {
             targetTypeClass = XML_VALUE;
         } else if (targetType.tag == TypeTags.TYPEDESC) {
             targetTypeClass = TYPEDESC_VALUE;
@@ -1101,6 +1101,13 @@ public class JvmCastGen {
     }
 
     private static void generateCheckCastToFiniteType(MethodVisitor mv, BType sourceType, BFiniteType targetType) {
+
+        generateCastToAny(mv, sourceType);
+        checkCast(mv, targetType);
+    }
+
+
+    private static void generateCheckCastToReadonlyType(MethodVisitor mv, BType sourceType, BType targetType) {
 
         generateCastToAny(mv, sourceType);
         checkCast(mv, targetType);

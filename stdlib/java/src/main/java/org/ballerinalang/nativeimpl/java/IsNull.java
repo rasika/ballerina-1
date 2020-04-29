@@ -22,17 +22,21 @@ import org.ballerinalang.jvm.values.HandleValue;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 
 /**
- * This class contains the implementation of the "isNull" ballerina function in ballerinax/java module.
+ * This class contains the implementation of the "isNull" ballerina function in ballerina/java module.
  *
  * @since 1.0.0
  */
 @BallerinaFunction(
-        orgName = "ballerinax", packageName = "java",
+        orgName = "ballerina", packageName = "java",
         functionName = "isNull"
 )
 public class IsNull {
 
     public static boolean isNull(Strand strand, HandleValue value) {
         return value.getValue() == null;
+    }
+
+    public static boolean isNull_bstring(Strand strand, HandleValue value) {
+        return isNull(strand, value);
     }
 }

@@ -34,7 +34,8 @@ public class TesterinaReport {
     private PrintStream outStream;
     private Map<String, TestSummary> testReportOfPackage = new HashMap<>();
     private boolean failure;
-    
+    private boolean isReportRequired;
+
     /**
      * Create an instance of Testerina Report.
      */
@@ -92,19 +93,21 @@ public class TesterinaReport {
         ModuleStatus.Status status;
         if (result.isSkipped()) {
             failure = true;
-            status = ModuleStatus.Status.FAILURE;
+            status = ModuleStatus.Status.SKIPPED;
             testSummary.skippedTests.add(result);
         } else if (result.isPassed()) {
             status = ModuleStatus.Status.PASSED;
             testSummary.passedTests.add(result);
         } else {
-            status = ModuleStatus.Status.SKIPPED;
             failure = true;
+            status = ModuleStatus.Status.FAILURE;
             testSummary.failedTests.add(result);
         }
 
-        ModuleStatus.getInstance()
-                .addTestSummary(result.getTestFunctionName(), status, result.getAssertFailureMessage());
+        if (isReportRequired) {
+            ModuleStatus.getInstance()
+                    .addTestSummary(result.getTestFunctionName(), status, result.getAssertFailureMessage());
+        }
     }
 
     /**
@@ -114,6 +117,10 @@ public class TesterinaReport {
      */
     public boolean isFailure() {
         return failure;
+    }
+
+    public void setReportRequired(boolean reportRequired) {
+        isReportRequired = reportRequired;
     }
 
     /**

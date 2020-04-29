@@ -22,17 +22,20 @@ import org.ballerinalang.jvm.values.HandleValue;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 
 /**
- * This class contains the implementation of the "createNull" ballerina function in ballerinax/java module.
+ * This class contains the implementation of the "createNull" ballerina function in ballerina/java module.
  *
  * @since 1.0.0
  */
 @BallerinaFunction(
-        orgName = "ballerinax", packageName = "java",
+        orgName = "ballerina", packageName = "java",
         functionName = "createNull"
 )
 public class CreateNull {
 
     public static HandleValue createNull(Strand strand) {
         return new HandleValue(null);
+    }
+    public static HandleValue createNull_bstring(Strand strand) {
+        return createNull(strand);
     }
 }

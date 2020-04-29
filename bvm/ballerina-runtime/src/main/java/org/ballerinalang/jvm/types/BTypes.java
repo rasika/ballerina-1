@@ -27,6 +27,7 @@ import java.util.HashMap;
 import static org.ballerinalang.jvm.util.BLangConstants.BALLERINA_BUILTIN_PKG_PREFIX;
 import static org.ballerinalang.jvm.util.BLangConstants.INT_LANG_LIB;
 import static org.ballerinalang.jvm.util.BLangConstants.STRING_LANG_LIB;
+import static org.ballerinalang.jvm.util.BLangConstants.XML_LANG_LIB;
 
 /**
  * This class contains various methods manipulate {@link BType}s in Ballerina.
@@ -47,6 +48,14 @@ public class BTypes {
             new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, INT_LANG_LIB, null), TypeTags.UNSIGNED16_INT_TAG);
     public static BType typeIntUnsigned8 = new BIntegerType(TypeConstants.UNSIGNED8,
             new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, INT_LANG_LIB, null), TypeTags.UNSIGNED8_INT_TAG);
+    public static BType typeElement = new BXMLType(TypeConstants.XML_ELEMENT,
+            new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, XML_LANG_LIB, null), TypeTags.XML_ELEMENT_TAG);
+    public static BType typeProcessingInstruction = new BXMLType(TypeConstants.XML_PI,
+            new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, XML_LANG_LIB, null), TypeTags.XML_PI_TAG);
+    public static BType typeComment = new BXMLType(TypeConstants.XML_COMMENT,
+            new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, XML_LANG_LIB, null), TypeTags.XML_COMMENT_TAG);
+    public static BType typeText = new BXMLType(TypeConstants.XML_TEXT,
+            new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, XML_LANG_LIB, null), TypeTags.XML_TEXT_TAG);
     public static BType typeByte = new BByteType(TypeConstants.BYTE_TNAME, new BPackage(null, null, null));
     public static BType typeFloat = new BFloatType(TypeConstants.FLOAT_TNAME, new BPackage(null, null, null));
     public static BType typeDecimal = new BDecimalType(TypeConstants.DECIMAL_TNAME, new BPackage(null, null, null));
@@ -54,7 +63,9 @@ public class BTypes {
     public static BType typeStringChar = new BStringType(TypeConstants.CHAR,
             new BPackage(BALLERINA_BUILTIN_PKG_PREFIX, STRING_LANG_LIB, null), TypeTags.CHAR_STRING_TAG);
     public static BType typeBoolean = new BBooleanType(TypeConstants.BOOLEAN_TNAME, new BPackage(null, null, null));
-    public static BType typeXML = new BXMLType(TypeConstants.XML_TNAME, new BPackage(null, null, null));
+    public static BType typeXML = new BXMLType(TypeConstants.XML_TNAME,
+            new BUnionType(Arrays.asList(typeElement, typeComment, typeProcessingInstruction, typeText)),
+            new BPackage(null, null, null));
     public static BType typeJSON = new BJSONType(TypeConstants.JSON_TNAME, new BPackage(null, null, null));
     public static BType typeAny = new BAnyType(TypeConstants.ANY_TNAME, new BPackage(null, null, null));
     public static BType typeAnydata = new BAnydataType(TypeConstants.ANYDATA_TNAME, new BPackage(null, null, null));
@@ -63,8 +74,6 @@ public class BTypes {
     public static BType typeTypedesc = new BTypedescType(TypeConstants.TYPEDESC_TNAME, new BPackage(null,
             null, null));
     public static BType typeMap = new BMapType(TypeConstants.MAP_TNAME, typeAny, new BPackage(null, null, null));
-    public static BType typeTable = new BTableType(TypeConstants.TABLE_TNAME, typeAnydata,
-            new BPackage(null, null, null));
     public static BType typeFuture = new BFutureType(TypeConstants.FUTURE_TNAME,
             new BPackage(null, null, null));
     public static BType typeNull = new BNullType(TypeConstants.NULL_TNAME, new BPackage(null, null, null));
@@ -81,6 +90,8 @@ public class BTypes {
     public static BType typePureType = new BUnionType(Arrays.asList(typeAnydata, typeError));
     public static BType typeAllType = new BUnionType(Arrays.asList(typeAny, typeError));
     public static BType typeHandle = new BHandleType(TypeConstants.HANDLE_TNAME, new BPackage(null, null, null));
+    public static BType typeReadonly = new BReadonlyType(TypeConstants.READONLY_TNAME, new BPackage(null, null, null));
+
     public static BRecordType stringItrNextReturnType = IteratorUtils.createIteratorNextReturnType(BTypes.typeString);
     public static BRecordType xmlItrNextReturnType = IteratorUtils
             .createIteratorNextReturnType(new BUnionType(Arrays.asList(BTypes.typeString, BTypes.typeXML)));

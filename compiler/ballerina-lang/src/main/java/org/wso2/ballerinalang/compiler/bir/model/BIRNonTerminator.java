@@ -18,6 +18,7 @@
 package org.wso2.ballerinalang.compiler.bir.model;
 
 import org.ballerinalang.model.elements.PackageID;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.SchedulerPolicy;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.util.Name;
 import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
@@ -167,28 +168,12 @@ public abstract class BIRNonTerminator extends BIRAbstractInstruction implements
      * @since 0.980.0
      */
     public static class NewStructure extends BIRNonTerminator {
-        public BType type;
-        public final boolean isExternalDef;
-        public final PackageID externalPackageId;
-        public final String recordName;
+        public BIROperand rhsOp;
 
-        public NewStructure(DiagnosticPos pos, BType type, BIROperand lhsOp) {
+        public NewStructure(DiagnosticPos pos, BIROperand lhsOp, BIROperand rhsOp) {
             super(pos, InstructionKind.NEW_STRUCTURE);
-            this.type = type;
             this.lhsOp = lhsOp;
-            this.recordName = null;
-            this.externalPackageId = null;
-            this.isExternalDef = false;
-        }
-
-        public NewStructure(DiagnosticPos pos, PackageID externalPackageId, String recordName, BType type,
-                            BIROperand lhsOp) {
-            super(pos, InstructionKind.NEW_STRUCTURE);
-            this.recordName = recordName;
-            this.type = type;
-            this.lhsOp = lhsOp;
-            this.externalPackageId = externalPackageId;
-            this.isExternalDef = true;
+            this.rhsOp = rhsOp;
         }
 
         @Override
@@ -272,6 +257,7 @@ public abstract class BIRNonTerminator extends BIRAbstractInstruction implements
         public BIROperand rhsOp;
         public boolean optionalFieldAccess = false;
         public boolean fillingRead = false;
+        public boolean isStoreOnCreation = false;
 
         public FieldAccess(DiagnosticPos pos, InstructionKind kind,
                            BIROperand lhsOp, BIROperand keyOp, BIROperand rhsOp) {
@@ -279,6 +265,15 @@ public abstract class BIRNonTerminator extends BIRAbstractInstruction implements
             this.lhsOp = lhsOp;
             this.keyOp = keyOp;
             this.rhsOp = rhsOp;
+        }
+
+        public FieldAccess(DiagnosticPos pos, InstructionKind kind, BIROperand lhsOp, BIROperand keyOp,
+                           BIROperand rhsOp, boolean isStoreOnCreation) {
+            super(pos, kind);
+            this.lhsOp = lhsOp;
+            this.keyOp = keyOp;
+            this.rhsOp = rhsOp;
+            this.isStoreOnCreation = isStoreOnCreation;
         }
 
         public FieldAccess(DiagnosticPos pos, InstructionKind kind,
@@ -566,6 +561,7 @@ public abstract class BIRNonTerminator extends BIRAbstractInstruction implements
      * @since 0.995.0
      */
     public static class FPLoad extends BIRNonTerminator {
+        public SchedulerPolicy schedulerPolicy;
         public Name funcName;
         public PackageID pkgId;
         public List<BIRVariableDcl> params;
@@ -573,49 +569,16 @@ public abstract class BIRNonTerminator extends BIRAbstractInstruction implements
         public BType retType;
 
         public FPLoad(DiagnosticPos pos, PackageID pkgId, Name funcName, BIROperand lhsOp,
-                      List<BIRVariableDcl> params, List<BIROperand> closureMaps, BType retType) {
+                      List<BIRVariableDcl> params, List<BIROperand> closureMaps, BType retType,
+                      SchedulerPolicy schedulerPolicy) {
             super(pos, InstructionKind.FP_LOAD);
+            this.schedulerPolicy = schedulerPolicy;
             this.lhsOp = lhsOp;
             this.funcName = funcName;
             this.pkgId = pkgId;
             this.params = params;
             this.closureMaps = closureMaps;
             this.retType = retType;
-        }
-
-        @Override
-        public void accept(BIRVisitor visitor) {
-            visitor.visit(this);
-        }
-    }
-
-    /**
-     * The new table instruction.
-     * <p>
-     * e.g. {@code table<Employee> tbEmployee = table {
-     *         { key id, name, salary },
-     *         [ { 1, "Mary",  300.5 },
-     *           { 2, "John",  200.5 },
-     *           { 3, "Jim", 330.5 }
-     *         ]
-     *      };}
-     *
-     * @since 0.995.0
-     */
-    public static class NewTable extends BIRNonTerminator {
-        public BIROperand columnsOp;
-        public BIROperand dataOp;
-        public BIROperand keyColOp;
-        public BType type;
-
-        public NewTable(DiagnosticPos pos, BType type, BIROperand lhsOp, BIROperand columnsOp,
-                        BIROperand dataOp, BIROperand keyColOp) {
-            super(pos, InstructionKind.NEW_TABLE);
-            this.type = type;
-            this.lhsOp = lhsOp;
-            this.columnsOp = columnsOp;
-            this.dataOp = dataOp;
-            this.keyColOp = keyColOp;
         }
 
         @Override

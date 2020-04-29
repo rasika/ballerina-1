@@ -51,7 +51,7 @@ public const RFC_7234 = "RFC_7234";
 
 # Provides a set of configurations for controlling the caching behaviour of the endpoint.
 #
-# + enabled - Specifies whether HTTP caching is enabled. Caching is enabled by default.
+# + enabled - Specifies whether HTTP caching is enabled. Caching is disabled by default.
 # + isShared - Specifies whether the HTTP caching layer should behave as a public cache or a private cache
 # + capacity - The capacity of the cache
 # + evictionFactor - The fraction of entries to be removed when the cache is full. The value should be
@@ -60,7 +60,7 @@ public const RFC_7234 = "RFC_7234";
 #            `CACHE_CONTROL_AND_VALIDATORS`. The default behaviour is to allow caching only when the `cache-control`
 #            header and either the `etag` or `last-modified` header are present.
 public type CacheConfig record {|
-    boolean enabled = true;
+    boolean enabled = false;
     boolean isShared = false;
     int capacity = 8388608; // 8MB
     float evictionFactor = 0.2;
@@ -271,39 +271,39 @@ public type HttpCachingClient client object {
         return self.httpClient->submit(httpVerb, path, <Request>message);
     }
 
-    # Retrieves the `Response` for a previously submitted request.
+    # Retrieves the `http:Response` for a previously-submitted request.
     #
-    # + httpFuture - The `HttpFuture` related to a previous asynchronous invocation
-    # + return - An HTTP response message, or an `http:ClientError` if the invocation fails
+    # + httpFuture - The `http:HttpFuture` related to a previous asynchronous invocation
+    # + return - A `http:Response` message, or else an `http:ClientError` if the invocation fails
     public remote function getResponse(HttpFuture httpFuture) returns Response|ClientError {
         return self.httpClient->getResponse(httpFuture);
     }
 
-    # Checks whether a `PushPromise` exists for a previously submitted request.
+    # Checks whether an `http:PushPromise` exists for a previously-submitted request.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - A `boolean` that represents whether a `PushPromise` exists
+    # + httpFuture - The `http:HttpFuture` relates to a previous asynchronous invocation
+    # + return - A `boolean`, which represents whether an `http:PushPromise` exists
     public remote function hasPromise(HttpFuture httpFuture) returns boolean {
         return self.httpClient->hasPromise(httpFuture);
     }
 
-    # Retrieves the next available `PushPromise` for a previously submitted request.
+    # Retrieves the next available `http:PushPromise` for a previously-submitted request.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - An HTTP Push Promise message, or an `http:ClientError` if the invocation fails
+    # + httpFuture - The `http:HttpFuture` relates to a previous asynchronous invocation
+    # + return - An `http:PushPromise` message or else an `http:ClientError` if the invocation fails
     public remote function getNextPromise(HttpFuture httpFuture) returns PushPromise|ClientError {
         return self.httpClient->getNextPromise(httpFuture);
     }
 
-    # Retrieves the promised server push `Response` message.
+    # Retrieves the promised server push `http:Response` message.
     #
-    # + promise - The related `PushPromise`
-    # + return - A promised HTTP `Response` message, or an `http:ClientError` if the invocation fails
+    # + promise - The related `http:PushPromise`
+    # + return - A promised HTTP `http:Response` message or else an `http:ClientError` if the invocation fails
     public remote function getPromisedResponse(PushPromise promise) returns Response|ClientError {
         return self.httpClient->getPromisedResponse(promise);
     }
 
-    # Rejects a `PushPromise`. When a `PushPromise` is rejected, there is no chance of fetching a promised
+    # Rejects an `http:PushPromise`. When an `http:PushPromise` is rejected, there is no chance of fetching a promised
     # response using the rejected promise.
     #
     # + promise - The Push Promise to be rejected
@@ -314,10 +314,11 @@ public type HttpCachingClient client object {
 
 # Creates an HTTP client capable of caching HTTP responses.
 #
-# + url - The URL of the HTTP endpoint to connect to
+# + url - The URL of the HTTP endpoint to connect
 # + config - The configurations for the client endpoint associated with the caching client
 # + cacheConfig - The configurations for the HTTP cache to be used with the caching client
-# + return - An `HttpCachingClient` instance which wraps the base `Client` with a caching layer
+# + return - An `http:HttpCachingClient` instance, which wraps the base `http:Client` with a caching layer 
+#            or else an `http:ClientError`
 public function createHttpCachingClient(string url, ClientConfiguration config, CacheConfig cacheConfig)
                                                                                       returns HttpClient|ClientError {
     HttpCachingClient httpCachingClient = new(url, config, cacheConfig);
@@ -513,13 +514,13 @@ function invalidateResponses(HttpCache httpCache, Response inboundResponse, stri
         inboundResponse.statusCode >= 200 && inboundResponse.statusCode < 400) {
         cache:Error? result = httpCache.cache.invalidate(getCacheKey(GET, path));
         if (result is cache:Error) {
-            log:printError(function() returns string {
+            log:printDebug(function() returns string {
                 return "Failed to remove the key: " + getCacheKey(GET, path) + " from the cache.";
             });
         }
         result = httpCache.cache.invalidate(getCacheKey(HEAD, path));
         if (result is cache:Error) {
-            log:printError(function() returns string {
+            log:printDebug(function() returns string {
                 return "Failed to remove the key: " + getCacheKey(GET, path) + " from the cache.";
             });
         }

@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java;
+import ballerina/java;
 import ballerina/cache;
 import ballerina/crypto;
 import ballerina/lang.'object as lang;
@@ -56,7 +56,7 @@ public type Listener object {
         return err;
     }
 
-    # Attach a service to the listener.
+    # Attaches a service to the listener.
     #
     # + s - The service that needs to be attached
     # + name - Name of the service
@@ -66,10 +66,10 @@ public type Listener object {
     }
 
     # Detaches a Http or WebSocket service from the listener. Note that detaching a WebSocket service would not affect
-    # the functionality of the existing connections.
+    # The functionality of the existing connections.
     #
     # + s - The service to be detached
-    # + return - error if occurred during detaching of a service or `nil`
+    # + return - An `error` if one occurred during detaching of a service or else `()`
     public function __detach(service s) returns error? {
         return self.detach(s);
     }
@@ -90,22 +90,19 @@ public type Listener object {
     # + c - Configurations for HTTP service endpoints
     public function init(ListenerConfiguration c) {
         self.config = c;
-        var auth = self.config["auth"];
+        ListenerAuth? auth = self.config["auth"];
         if (auth is ListenerAuth) {
             if (auth.mandateSecureSocket) {
-                var secureSocket = self.config.secureSocket;
-                if (secureSocket is ListenerSecureSocket) {
-                    addAuthFilters(self.config);
-                } else {
+                ListenerSecureSocket? secureSocket = self.config.secureSocket;
+                if (secureSocket is ()) {
                     error err = error("Secure sockets have not been cofigured in order to enable auth providers.");
                     panic err;
                 }
-            } else {
-                addAuthFilters(self.config);
             }
+            addAuthFilters(self.config);
         }
         addAttributeFilter(self.config);
-        var err = self.initEndpoint();
+        error? err = self.initEndpoint();
         if (err is error) {
             panic err;
         }
@@ -174,7 +171,7 @@ function externDetach(Listener listenerObj, service s) returns error? = @java:Me
 
 # Presents a read-only view of the remote address.
 #
-# + host - The remote host name/IP
+# + host - The remote host IP
 # + port - The remote port
 public type Remote record {|
     string host = "";
@@ -252,8 +249,8 @@ public type ListenerHttp1Settings record {|
 # + mandateSecureSocket - Specify whether secure socket configurations are mandatory or not
 # + position - The authn/authz filter position of the filter array. The position values starts from 0 and it is set to 0 implicitly
 public type ListenerAuth record {|
-    InboundAuthHandler[]|InboundAuthHandler[][] authHandlers;
-    string[]|string[][] scopes?;
+    InboundAuthHandlers authHandlers;
+    Scopes scopes?;
     cache:Cache? positiveAuthzCache = new;
     cache:Cache? negativeAuthzCache = new;
     boolean mandateSecureSocket = true;
@@ -323,15 +320,15 @@ function addAuthFilters(ListenerConfiguration config) {
     // the auth filter position is specified as 0. If there are any filters specified, the authentication and
     // authorization filters should be added into the position specified.
 
-    var auth = config["auth"];
+    ListenerAuth? auth = config["auth"];
     if (auth is ListenerAuth) {
-        InboundAuthHandler[]|InboundAuthHandler[][] authHandlers = auth.authHandlers;
+        InboundAuthHandlers authHandlers = auth.authHandlers;
         AuthnFilter authnFilter = new(authHandlers);
 
         cache:Cache? positiveAuthzCache = auth.positiveAuthzCache ?: ();
         cache:Cache? negativeAuthzCache = auth.positiveAuthzCache ?: ();
         AuthzHandler authzHandler = new(positiveAuthzCache, negativeAuthzCache);
-        var scopes = auth["scopes"];
+        Scopes? scopes = auth["scopes"];
         AuthzFilter authzFilter = new(authzHandler, scopes);
 
         if (auth.position == 0) {
@@ -361,7 +358,7 @@ type AttributeFilter object {
     *RequestFilter;
 
     public function filterRequest(Caller caller, Request request, FilterContext context) returns boolean {
-        var ctx = runtime:getInvocationContext();
+        runtime:InvocationContext ctx = runtime:getInvocationContext();
         ctx.attributes[SERVICE_NAME] = context.getServiceName();
         ctx.attributes[RESOURCE_NAME] = context.getResourceName();
         ctx.attributes[REQUEST_METHOD] = request.method;

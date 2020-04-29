@@ -25,20 +25,36 @@ public type Detail record {
     error cause?;
 };
 
-# Represents the reason for the Cache error.
+# Represents the reason for the `cache:Error`.
 public const CACHE_ERROR = "{ballerina/cache}Error";
 
-# Represents the Cache error type with details. This will be returned if an error occurred while doing the cache
+# Represents the Cache error type with details. This will be returned if an error occurred while doing any of the cache
 # operations.
 public type Error error<CACHE_ERROR, Detail>;
 
-# Log and prepare the `error` as an `Error`.
+# Prepare the `error` as a `cache:Error` after printing an error log.
 #
 # + message - Error message
 # + err - `error` instance
 # + return - Prepared `Error` instance
 function prepareError(string message, error? err = ()) returns Error {
     log:printError(message, err);
+    Error cacheError;
+    if (err is error) {
+        cacheError = error(CACHE_ERROR, message = message, cause = err);
+    } else {
+        cacheError = error(CACHE_ERROR, message = message);
+    }
+    return cacheError;
+}
+
+# Prepare the `error` as a `cache:Error` after printing a debug log.
+#
+# + message - Error message
+# + err - `error` instance
+# + return - Prepared `Error` instance
+function prepareErrorWithDebugLog(string message, error? err = ()) returns Error {
+    log:printDebug(message);
     Error cacheError;
     if (err is error) {
         cacheError = error(CACHE_ERROR, message = message, cause = err);

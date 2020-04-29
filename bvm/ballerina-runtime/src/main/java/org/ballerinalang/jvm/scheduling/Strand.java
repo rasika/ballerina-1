@@ -17,6 +17,7 @@
  */
 package org.ballerinalang.jvm.scheduling;
 
+import org.ballerinalang.jvm.StringUtils;
 import org.ballerinalang.jvm.TypeChecker;
 import org.ballerinalang.jvm.observability.ObserverContext;
 import org.ballerinalang.jvm.transactions.TransactionLocalContext;
@@ -60,16 +61,20 @@ public class Strand {
     public Set<SchedulerItem> dependants;
     public ObserverContext observerContext;
     public boolean cancel;
+    public int threadId;
 
     SchedulerItem schedulerItem;
     List<WaitContext> waitingContexts;
     WaitContext waitContext;
+    ItemGroup strandGroup;
 
     private Map<String, Object> globalProps;
     public TransactionLocalContext transactionLocalContext;
     private State state;
     private final ReentrantLock strandLock;
 
+    public static final String IS_STRING_VALUE_PROP = "ballerina.bstring";
+    public static final boolean USE_BSTRING = System.getProperty(IS_STRING_VALUE_PROP) != null;
 
     public Strand(Scheduler scheduler) {
         this.scheduler = scheduler;
@@ -188,7 +193,11 @@ public class Strand {
                     throw future.panic;
                 }
                 ctx.waitCount.decrementAndGet();
-                target.put(entry.getKey(), future.result);
+                Object key = entry.getKey();
+                if (USE_BSTRING) {
+                    key = StringUtils.fromString((String) key);
+                }
+                target.put(key, future.result);
             } else {
                 this.setState(BLOCK_ON_AND_YIELD);
                 entry.getValue().strand.waitingContexts.add(ctx);

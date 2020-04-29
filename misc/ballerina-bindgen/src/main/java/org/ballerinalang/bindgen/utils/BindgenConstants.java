@@ -19,13 +19,19 @@ package org.ballerinalang.bindgen.utils;
 
 /**
  * Class for storing constants related to Ballerina Bindgen CLI tool.
+ *
+ * @since 1.2.0
  */
 public class BindgenConstants {
 
+    private BindgenConstants() {
+    }
+
     public static final String BALLERINA_BINDINGS_DIR = "ballerina_bindings";
+    public static final String BINDINGS_DIR = "bindings";
     public static final String ACCESS_FIELD = "access";
     public static final String ACCESS_FIELD_INTEROP_TYPE = "@java:FieldGet";
-    public static final String BAL_FILE_EXTENSION = ".bal";
+    public static final String BAL_EXTENSION = ".bal";
     public static final String BBGEN_CLASS_TEMPLATE_NAME = "bridge_class";
     public static final String ARRAY_UTILS_TEMPLATE_NAME = "array_utils";
     public static final String CONSTANTS_TEMPLATE_NAME = "constants";
@@ -37,26 +43,28 @@ public class BindgenConstants {
     public static final String MUTATE_FIELD_INTEROP_TYPE = "@java:FieldSet";
     public static final String DEFAULT_TEMPLATE_DIR = "/templates";
     public static final String USER_DIR = "user.dir";
-    public static final String UTILS_DIR = "/utils";
+    public static final String UTILS_DIR = "utils";
     public static final String JOBJECT_FILE_NAME = "JObject.bal";
-    public static final String JAVA_OBJECT_CLASS_NAME = "java.lang.Object";
     public static final String CONSTANTS_FILE_NAME = "Constants.bal";
     public static final String ARRAY_UTILS_FILE_NAME = "ArrayUtils.bal";
-    public static final String JAVA_UTILS_MODULE = "java_utils";
-    public static final String DEPENDENCIES_DIR_NAME = "dependencies";
+    public static final String DEPENDENCIES_DIR = "dependencies";
     static final String MUSTACHE_FILE_EXTENSION = ".mustache";
     static final String TEMPLATES_DIR_PATH_KEY = "templates.dir.path";
     static final String FLOAT = "float";
     static final String INT = "int";
     static final String BOOLEAN = "boolean";
     static final String BYTE = "byte";
+    static final String FLOAT_ARRAY = "float[]";
+    static final String INT_ARRAY = "int[]";
+    static final String BOOLEAN_ARRAY = "boolean[]";
+    static final String BYTE_ARRAY = "byte[]";
     static final String SHORT = "short";
     static final String CHAR = "char";
     static final String DOUBLE = "double";
     static final String LONG = "long";
     static final String JAVA_STRING = "String";
     static final String JAVA_STRING_ARRAY = "String[]";
-    public static final String HANDLE = "handle";
+    static final String HANDLE = "handle";
     public static final String BALLERINA_STRING = "string";
     public static final String BALLERINA_STRING_ARRAY = "string[]";
     public static final String[] BALLERINA_RESERVED_WORDS = {"import", "as", "public", "private", "external", "final",
@@ -67,5 +75,6 @@ public class BindgenConstants {
             "if", "match", "else", "foreach", "while", "continue", "break", "fork", "join", "some", "all", "try",
             "catch", "finally", "throw", "panic", "trap", "return", "transaction", "abort", "retry", "onretry",
             "retries", "committed", "aborted", "with", "in", "lock", "untaint", "start", "but", "check", "checkpanic",
-            "primarykey", "is", "flush", "wait", "default", "from", "select", "where", "limit", "order"};
+            "primarykey", "is", "flush", "wait", "default", "from", "select", "where", "limit", "order", "field",
+            "let", "Deprecated"};
 }

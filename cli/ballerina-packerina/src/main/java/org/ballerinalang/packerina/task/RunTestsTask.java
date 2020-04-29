@@ -19,10 +19,10 @@
 package org.ballerinalang.packerina.task;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.ballerinalang.packerina.OsUtils;
 import org.ballerinalang.packerina.buildcontext.BuildContext;
 import org.ballerinalang.packerina.buildcontext.BuildContextField;
+import org.ballerinalang.packerina.buildcontext.sourcecontext.SingleFileContext;
 import org.ballerinalang.packerina.model.ExecutableJar;
 import org.ballerinalang.test.runtime.entity.ModuleCoverage;
 import org.ballerinalang.test.runtime.entity.ModuleStatus;
@@ -54,7 +54,15 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import static org.ballerinalang.test.runtime.util.TesterinaConstants.TEST_RESULTS_FILE;
+import static org.ballerinalang.packerina.utils.DebugUtils.getDebugArgs;
+import static org.ballerinalang.packerina.utils.DebugUtils.isInDebugMode;
+import static org.ballerinalang.test.runtime.util.TesterinaConstants.DOT;
+import static org.ballerinalang.test.runtime.util.TesterinaConstants.FILE_PROTOCOL;
+import static org.ballerinalang.test.runtime.util.TesterinaConstants.REPORT_DATA_PLACEHOLDER;
+import static org.ballerinalang.test.runtime.util.TesterinaConstants.REPORT_DIR_NAME;
+import static org.ballerinalang.test.runtime.util.TesterinaConstants.REPORT_ZIP_NAME;
+import static org.ballerinalang.test.runtime.util.TesterinaConstants.RESULTS_HTML_FILE;
+import static org.ballerinalang.test.runtime.util.TesterinaConstants.RESULTS_JSON_FILE;
 import static org.ballerinalang.test.runtime.util.TesterinaConstants.TEST_RUNTIME_JAR_PREFIX;
 import static org.ballerinalang.tool.LauncherUtils.createLauncherException;
 import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BALLERINA_HOME;
@@ -67,18 +75,24 @@ import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BLANG_COM
  */
 public class RunTestsTask implements Task {
     private final String[] args;
+    private boolean report;
     private boolean coverage;
     private Path testJarPath;
     TestReport testReport;
 
-    public RunTestsTask(boolean coverage, String[] args) {
+    public RunTestsTask(boolean report, boolean coverage, String[] args) {
         this.coverage = coverage;
         this.args = args;
-        testReport = new TestReport();
+        this.report = report;
+        if (report || coverage) {
+            testReport = new TestReport();
+        }
     }
 
-    public RunTestsTask(boolean coverage, String[] args, List<String> groupList, List<String> disableGroupList) {
+    public RunTestsTask(boolean report, boolean coverage, String[] args, List<String> groupList,
+                        List<String> disableGroupList) {
         this.args = args;
+        this.report = report;
         this.coverage = coverage;
         TesterinaRegistry testerinaRegistry = TesterinaRegistry.getInstance();
         if (disableGroupList != null) {
@@ -88,7 +102,10 @@ public class RunTestsTask implements Task {
             testerinaRegistry.setGroups(groupList);
             testerinaRegistry.setShouldIncludeGroups(true);
         }
-        testReport = new TestReport();
+
+        if (report || coverage) {
+            testReport = new TestReport();
+        }
     }
 
     @Override
@@ -108,7 +125,8 @@ public class RunTestsTask implements Task {
 
         Path sourceRootPath = buildContext.get(BuildContextField.SOURCE_ROOT);
         List<BLangPackage> moduleBirMap = buildContext.getModules();
-        testReport.setProjectName(sourceRootPath.toFile().getName());
+
+        int result = 0;
 
         // Only tests in packages are executed so default packages i.e. single bal files which has the package name
         // as "." are ignored. This is to be consistent with the "ballerina test" command which only executes tests
@@ -116,31 +134,46 @@ public class RunTestsTask implements Task {
         for (BLangPackage bLangPackage : moduleBirMap) {
             TestSuite suite = TesterinaRegistry.getInstance().getTestSuites().get(bLangPackage.packageID.toString());
             if (suite == null) {
-                buildContext.out().println();
-                buildContext.out().println("\t" + bLangPackage.packageID);
+                if (!DOT.equals(bLangPackage.packageID.toString())) {
+                    buildContext.out().println();
+                    buildContext.out().println("\t" + bLangPackage.packageID);
+                }
                 buildContext.out().println("\t" + "No tests found");
                 buildContext.out().println();
                 continue;
             }
+            suite.setReportRequired(report || coverage);
             HashSet<Path> testDependencies = getTestDependencies(buildContext, bLangPackage);
             Path jsonPath = buildContext.getTestJsonPathTargetCache(bLangPackage.packageID);
             createTestJson(bLangPackage, suite, sourceRootPath, jsonPath);
             int testResult = runTestSuit(jsonPath, buildContext, testDependencies, bLangPackage);
-            if (testResult != 0) {
-                throw createLauncherException("there are test failures");
+            if (result == 0) {
+                result = testResult;
             }
-            Path statusJsonPath = jsonPath.resolve(TesterinaConstants.STATUS_FILE);
-            try {
-                ModuleStatus moduleStatus = loadModuleStatusFromFile(statusJsonPath);
-                testReport.addModuleStatus(String.valueOf(bLangPackage.packageID.name), moduleStatus);
-            } catch (IOException e) {
-                throw createLauncherException("error while generating test report", e);
+
+            if (report || coverage) {
+                // Set projectName in test report
+                String projectName;
+                if (buildContext.get(BuildContextField.SOURCE_CONTEXT) instanceof SingleFileContext) {
+                    SingleFileContext singleFileContext = buildContext.get(BuildContextField.SOURCE_CONTEXT);
+                    projectName = singleFileContext.getBalFile().toFile().getName();
+                } else {
+                    projectName = sourceRootPath.toFile().getName();
+                }
+                testReport.setProjectName(projectName);
+                Path statusJsonPath = jsonPath.resolve(TesterinaConstants.STATUS_FILE);
+                try {
+                    ModuleStatus moduleStatus = loadModuleStatusFromFile(statusJsonPath);
+                    testReport.addModuleStatus(String.valueOf(bLangPackage.packageID.name), moduleStatus);
+                } catch (IOException e) {
+                    throw createLauncherException("error while generating test report", e);
+                }
             }
 
             if (coverage) {
                 int coverageResult = generateCoverageReport(buildContext, testDependencies, bLangPackage);
                 if (coverageResult != 0) {
-                    throw createLauncherException("there are test failures");
+                    throw createLauncherException("error while generating test report");
                 }
                 Path coverageJsonPath = jsonPath.resolve(TesterinaConstants.COVERAGE_FILE);
                 try {
@@ -151,8 +184,13 @@ public class RunTestsTask implements Task {
                 }
             }
         }
-        testReport.finalizeTestResults(coverage);
-        writeReportToJson(buildContext.out(), testReport, targetDir);
+        if ((report || coverage) && (testReport.getModuleStatus().size() > 0)) {
+            testReport.finalizeTestResults(coverage);
+            generateHtmlReport(buildContext.out(), testReport, targetDir);
+        }
+        if (result != 0) {
+            throw createLauncherException("there are test failures");
+        }
     }
 
     /**
@@ -227,20 +265,36 @@ public class RunTestsTask implements Task {
      * @param out PrintStream object to print messages to console
      * @param testReport Data that are parsed to the json
      */
-    private void writeReportToJson(PrintStream out, TestReport testReport, Path jsonPath) {
+    private void generateHtmlReport(PrintStream out, TestReport testReport, Path jsonPath) {
         out.println();
         out.println("Generating Test Report");
-        File jsonFile = new File(jsonPath.resolve(TEST_RESULTS_FILE).toString());
+
+        Gson gson = new Gson();
+        String json = gson.toJson(testReport).replaceAll("\\\\\\(", "(");
+
+        File jsonFile = new File(jsonPath.resolve(RESULTS_JSON_FILE).toString());
         try (Writer writer = new OutputStreamWriter(new FileOutputStream(jsonFile), StandardCharsets.UTF_8)) {
-            Gson gson;
-            if (this.coverage) {
-                 gson = new Gson();
-            } else {
-                gson = new GsonBuilder().setExclusionStrategies(new TestReport.ReportExclusionStrategy()).create();
-            }
-            String json = gson.toJson(testReport);
             writer.write(new String(json.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
-            out.println("\t" + Paths.get("").toAbsolutePath().relativize(jsonFile.toPath()));
+            out.println("\t" + Paths.get("").toAbsolutePath().relativize(jsonFile.toPath()) + "\n");
+        } catch (IOException e) {
+            throw LauncherUtils.createLauncherException("couldn't read data from the Json file : " + e.toString());
+        }
+
+        String content;
+        try {
+            CodeCoverageUtils.unzipReportResources(getClass().getClassLoader().getResourceAsStream(REPORT_ZIP_NAME),
+                    jsonPath.resolve(REPORT_DIR_NAME).toFile());
+
+            content = new String(Files.readAllBytes(jsonPath.resolve(REPORT_DIR_NAME).resolve(RESULTS_HTML_FILE)),
+                    StandardCharsets.UTF_8);
+            content = content.replace(REPORT_DATA_PLACEHOLDER, json);
+        } catch (IOException e) {
+            throw LauncherUtils.createLauncherException("error occurred while preparing test report: " + e.toString());
+        }
+        File htmlFile = new File(jsonPath.resolve(REPORT_DIR_NAME).resolve(RESULTS_HTML_FILE).toString());
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(htmlFile), StandardCharsets.UTF_8)) {
+            writer.write(new String(content.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
+            out.println("\tView the test report at: " + FILE_PROTOCOL + htmlFile.getAbsolutePath());
         } catch (IOException e) {
             throw LauncherUtils.createLauncherException("couldn't read data from the Json file : " + e.toString());
         }
@@ -263,13 +317,20 @@ public class RunTestsTask implements Task {
                         + jacocoAgentJarPath
                         + "=destfile="
                         + targetDir.resolve(TesterinaConstants.COVERAGE_DIR)
-                        .resolve(TesterinaConstants.EXEC_FILE_NAME).toString()
-                        + ",includes=" + orgName + "." + packageName + ".*";
+                        .resolve(TesterinaConstants.EXEC_FILE_NAME).toString();
+                if (!TesterinaConstants.DOT.equals(packageName)) {
+                    agentCommand += ",includes=" + orgName + "." + packageName + ".*";
+                }
                 cmdArgs.add(agentCommand);
             }
 
             String classPath = getClassPath(getTestRuntimeJar(buildContext), testDependencies);
-            cmdArgs.addAll(Lists.of("-cp", classPath, mainClassName, jsonPath.toString()));
+            cmdArgs.addAll(Lists.of("-cp", classPath));
+            if (isInDebugMode()) {
+                cmdArgs.add(getDebugArgs(buildContext));
+            }
+            cmdArgs.add(mainClassName);
+            cmdArgs.add(jsonPath.toString());
             cmdArgs.addAll(Arrays.asList(args));
             cmdArgs.add(targetDir.toString());
             cmdArgs.add(testJarPath.toString());
@@ -295,7 +356,6 @@ public class RunTestsTask implements Task {
         try {
             String classPath = getClassPath(getTestRuntimeJar(buildContext), testDependencies);
             cmdArgs.addAll(Lists.of("-cp", classPath, mainClassName, jsonPath.toString()));
-            cmdArgs.addAll(Arrays.asList(args));
             cmdArgs.add(targetDir.toString());
             cmdArgs.add(testJarPath.toString());
             cmdArgs.add(orgName);

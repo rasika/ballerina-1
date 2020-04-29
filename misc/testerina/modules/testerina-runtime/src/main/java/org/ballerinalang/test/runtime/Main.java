@@ -40,24 +40,32 @@ import java.util.Arrays;
  * Main class to init the test suit.
  */
 public class Main {
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws IOException {
         Path jsonCachePath = Paths.get(args[0], TesterinaConstants.TESTERINA_TEST_SUITE);
         Path jsonTmpSummaryPath = Paths.get(args[0], TesterinaConstants.STATUS_FILE);
         String[] configArgs = Arrays.copyOfRange(args, 1, args.length);
         LaunchUtils.initConfigurations(configArgs);
-        BufferedReader br = Files.newBufferedReader(jsonCachePath, StandardCharsets.UTF_8);
-
-        //convert the json string back to object
-        Gson gson = new Gson();
-        TestSuite response = gson.fromJson(br, TestSuite.class);
-        startTestSuit(Paths.get(response.getSourceRootPath()), response, jsonTmpSummaryPath);
-        Runtime.getRuntime().exit(0);
+        try (BufferedReader br = Files.newBufferedReader(jsonCachePath, StandardCharsets.UTF_8)) {
+            //convert the json string back to object
+            Gson gson = new Gson();
+            TestSuite response = gson.fromJson(br, TestSuite.class);
+            startTestSuit(Paths.get(response.getSourceRootPath()), response, jsonTmpSummaryPath);
+        }
     }
 
     private static void startTestSuit(Path sourceRootPath, TestSuite testSuite, Path jsonTmpSummaryPath)
-            throws ClassNotFoundException, IOException {
-        TesterinaUtils.executeTests(sourceRootPath, testSuite);
-        writeStatusToJsonFile(ModuleStatus.getInstance(), jsonTmpSummaryPath);
+            throws IOException {
+        int exitStatus = 0;
+        try {
+            TesterinaUtils.executeTests(sourceRootPath, testSuite);
+        } catch (RuntimeException e) {
+            exitStatus = 1;
+        } finally {
+            if (testSuite.isReportRequired()) {
+                writeStatusToJsonFile(ModuleStatus.getInstance(), jsonTmpSummaryPath);
+            }
+            Runtime.getRuntime().exit(exitStatus);
+        }
     }
 
     private static void writeStatusToJsonFile(ModuleStatus moduleStatus, Path tmpJsonPath) throws IOException {

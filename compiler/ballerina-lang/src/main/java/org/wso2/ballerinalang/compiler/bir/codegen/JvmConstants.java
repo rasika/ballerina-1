@@ -30,7 +30,6 @@ public class JvmConstants {
     // jvm runtime values related classes
     public static final String MAP_VALUE = "org/ballerinalang/jvm/values/MapValue";
     public static final String MAP_VALUE_IMPL = "org/ballerinalang/jvm/values/MapValueImpl";
-    public static final String TABLE_VALUE = "org/ballerinalang/jvm/values/TableValue";
     public static final String STREAM_VALUE = "org/ballerinalang/jvm/values/StreamValue";
     public static final String ARRAY_VALUE = "org/ballerinalang/jvm/values/ArrayValue";
     public static final String OBJECT_VALUE = "org/ballerinalang/jvm/values/ObjectValue";
@@ -40,6 +39,8 @@ public class JvmConstants {
     public static final String STRING_VALUE = "java/lang/String";
     public static final String BMP_STRING_VALUE = "org/ballerinalang/jvm/values/BmpStringValue";
     public static final String LONG_VALUE = "java/lang/Long";
+    public static final String BYTE_VALUE = "java/lang/Byte";
+    public static final String SHORT_VALUE = "java/lang/Short";
     public static final String BOOLEAN_VALUE = "java/lang/Boolean";
     public static final String DOUBLE_VALUE = "java/lang/Double";
     public static final String DECIMAL_VALUE = "org/ballerinalang/jvm/values/DecimalValue";
@@ -47,6 +48,7 @@ public class JvmConstants {
     public static final String XML_VALUE = "org/ballerinalang/jvm/values/XMLValue";
     public static final String XML_QNAME = "org/ballerinalang/jvm/values/XMLQName";
     public static final String FUTURE_VALUE = "org/ballerinalang/jvm/values/FutureValue";
+    public static final String TYPEDESC_VALUE_IMPL = "org/ballerinalang/jvm/values/TypedescValueImpl";
     public static final String TYPEDESC_VALUE = "org/ballerinalang/jvm/values/TypedescValue";
     public static final String HANDLE_VALUE = "org/ballerinalang/jvm/values/HandleValue";
     public static final String LOCK_VALUE = "org/ballerinalang/jvm/BLock";
@@ -63,7 +65,7 @@ public class JvmConstants {
     public static final String BTYPES = "org/ballerinalang/jvm/types/BTypes";
     public static final String ARRAY_TYPE = "org/ballerinalang/jvm/types/BArrayType";
     public static final String MAP_TYPE = "org/ballerinalang/jvm/types/BMapType";
-    public static final String TABLE_TYPE = "org/ballerinalang/jvm/types/BTableType";
+    public static final String XML_TYPE = "org/ballerinalang/jvm/types/BXMLType";
     public static final String STREAM_TYPE = "org/ballerinalang/jvm/types/BStreamType";
     public static final String UNION_TYPE = "org/ballerinalang/jvm/types/BUnionType";
     public static final String RECORD_TYPE = "org/ballerinalang/jvm/types/BRecordType";
@@ -165,12 +167,22 @@ public class JvmConstants {
     public static final String UNIX_PATH_SEPERATOR = "/";
     public static final String JAVA_PACKAGE_SEPERATOR = "/";
     public static final String FILE_NAME_PERIOD_SEPERATOR = "$$$";
+    public static final String VALUE_CLASS_PREFIX = "$value$";
+    public static final String TYPEDESC_CLASS_PREFIX = "$typedesc$";
     public static final String BALLERINA = "ballerina";
     public static final String BUILT_IN_PACKAGE_NAME = "lang.annotations";
 
     // scheduler related constants
     public static final String SCHEDULE_FUNCTION_METHOD = "scheduleFunction";
+    public static final String SCHEDULE_LOCAL_METHOD = "scheduleLocal";
     public static final String SCHEDULER_START_METHOD = "start";
+
+    // strand data related constants
+    public static final String STRAND_ANNOTATION = "strand";
+    public static final String STRAND_THREAD = "thread";
+    public static final String STRAND_DATA_NAME = "name";
+    public static final String STRAND_VALUE_ANY = "any";
+    public static final String DEFAULT_STRAND_DISPATCHER = "DEFAULT";
 
     // observability related constants
     public static final String OBSERVER_CONTEXT = "org/ballerinalang/jvm/observability/ObserverContext";
@@ -194,5 +206,5 @@ public class JvmConstants {
     public static final String METHOD_TOO_LARGE = "MethodTooLarge";
     public static final String CLASS_TOO_LARGE = "ClassTooLarge";
 
-    public static final String GLOBAL_LOCK_NAME = "global";
+    public static final String GLOBAL_LOCK_NAME = "lock";
 }

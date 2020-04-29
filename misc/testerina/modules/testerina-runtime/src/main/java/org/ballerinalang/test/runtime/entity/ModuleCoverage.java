@@ -25,9 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 /**
@@ -37,14 +36,16 @@ import java.util.stream.Stream;
  */
 public class ModuleCoverage {
 
+    private String name;
     private int coveredLines;
     private int missedLines;
     private float coveragePercentage;
-    private Map<String, SourceFile> sourceFiles = new HashMap<>();
+    private List<SourceFile> sourceFiles = new ArrayList<>();
 
     private static PrintStream errStream = System.err;
 
     private static ModuleCoverage instance = new ModuleCoverage();
+
     public static ModuleCoverage getInstance() {
         return instance;
     }
@@ -60,14 +61,15 @@ public class ModuleCoverage {
     public void addSourceFileCoverage (String moduleName, String fileName, List<Integer> coveredLines,
                                        List<Integer> missedLines) {
         SourceFile sourceFile = new SourceFile(moduleName, fileName, coveredLines, missedLines);
-        this.sourceFiles.put(fileName, sourceFile);
+        this.sourceFiles.add(sourceFile);
         this.coveredLines += coveredLines.size();
         this.missedLines += missedLines.size();
         setCoveragePercentage();
     }
 
     private void setCoveragePercentage() {
-        this.coveragePercentage = (float) this.coveredLines / (this.coveredLines + this.missedLines) * 100;
+        float coverageVal = (float) this.coveredLines / (this.coveredLines + this.missedLines) * 100;
+        this.coveragePercentage = (float) (Math.round(coverageVal * 100.0) / 100.0);
     }
 
     public float getCoveragePercentage() {
@@ -82,16 +84,26 @@ public class ModuleCoverage {
         return missedLines;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     /**
      * Inner class for the SourceFile in Json.
      */
     private static class SourceFile {
+        private String name;
         private List<Integer> coveredLines;
         private List<Integer> missedLines;
         private float coveragePercentage;
         private String sourceCode;
 
         private SourceFile(String moduleName, String fileName, List<Integer> coveredLines, List<Integer> missedLines) {
+            this.name = fileName;
             this.coveredLines = coveredLines;
             this.missedLines = missedLines;
             setCoveragePercentage(coveredLines, missedLines);
@@ -99,11 +111,17 @@ public class ModuleCoverage {
         }
 
         private void setCoveragePercentage(List<Integer> coveredLines, List<Integer> missedLines) {
-            this.coveragePercentage = (float) coveredLines.size() / (coveredLines.size() + missedLines.size()) * 100;
+            float coverageVal = (float) coveredLines.size() / (coveredLines.size() + missedLines.size()) * 100;
+            this.coveragePercentage = (float) (Math.round(coverageVal * 100.0) / 100.0);
         }
 
         private void setSourceCode(String moduleName, String fileName) {
-            Path sourceFile = Paths.get(TesterinaConstants.SRC_DIR).resolve(moduleName).resolve(fileName);
+            Path sourceFile;
+            if (TesterinaConstants.DOT.equals(moduleName)) {
+                sourceFile = Paths.get(fileName);
+            } else {
+                sourceFile = Paths.get(TesterinaConstants.SRC_DIR).resolve(moduleName).resolve(fileName);
+            }
             StringBuilder contentBuilder = new StringBuilder();
             try (Stream<String> stream = Files.lines(sourceFile, StandardCharsets.UTF_8)) {
                 stream.forEach(s -> contentBuilder.append(s).append("\n"));
@@ -128,6 +146,10 @@ public class ModuleCoverage {
 
         public List<Integer> getMissedLines() {
             return this.missedLines;
+        }
+
+        public String getName() {
+            return name;
         }
     }
 }

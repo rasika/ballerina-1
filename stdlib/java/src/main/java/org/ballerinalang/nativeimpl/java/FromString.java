@@ -19,20 +19,24 @@ package org.ballerinalang.nativeimpl.java;
 
 import org.ballerinalang.jvm.scheduling.Strand;
 import org.ballerinalang.jvm.values.HandleValue;
+import org.ballerinalang.jvm.values.api.BString;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 
 /**
- * This class contains the implementation of the "fromString" ballerina function in ballerinax/java module.
+ * This class contains the implementation of the "fromString" ballerina function in ballerina/java module.
  *
  * @since 1.0.0
  */
 @BallerinaFunction(
-        orgName = "ballerinax", packageName = "java",
+        orgName = "ballerina", packageName = "java",
         functionName = "fromString"
 )
 public class FromString {
 
     public static HandleValue fromString(Strand strand, String strValue) {
         return new HandleValue(strValue);
+    }
+    public static HandleValue fromString_bstring(Strand strand, BString strValue) {
+        return new HandleValue(strValue.getValue());
     }
 }

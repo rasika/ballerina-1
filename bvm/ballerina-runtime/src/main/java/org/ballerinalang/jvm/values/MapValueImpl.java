@@ -173,8 +173,8 @@ public class MapValueImpl<K, V> extends LinkedHashMap<K, V> implements RefValue,
         if (this.type.getTag() == TypeTags.RECORD_TYPE_TAG) {
             BRecordType recordType = (BRecordType) this.type;
             Map fields = recordType.getFields();
-            if (fields.containsKey(key)) {
-                expectedType = ((BField) fields.get(key)).type;
+            if (fields.containsKey(key.toString())) {
+                expectedType = ((BField) fields.get(key.toString())).type;
             } else {
                 if (recordType.sealed) {
                     // Panic if this record type does not contain a key by the specified name.
@@ -299,7 +299,10 @@ public class MapValueImpl<K, V> extends LinkedHashMap<K, V> implements RefValue,
     @SuppressWarnings("unchecked")
     public K[] getKeys() {
         Set<K> keys = super.keySet();
-        return (K[]) keys.toArray(new String[keys.size()]);
+        String bStringProp = System.getProperty("ballerina.bstring");
+        boolean isBString = (bStringProp != null && !"".equals(bStringProp));
+        int size = keys.size();
+        return (K[]) (isBString ? keys.toArray(new BString[size]) : keys.toArray(new String[size]));
     }
 
     /**
@@ -375,11 +378,6 @@ public class MapValueImpl<K, V> extends LinkedHashMap<K, V> implements RefValue,
             sj.add(key + "=" + StringUtils.getStringValue(value));
         }
         return sj.toString();
-    }
-
-    @Override
-    public StringValue bStringValue() {
-        return null;
     }
 
     @Override
@@ -480,11 +478,6 @@ public class MapValueImpl<K, V> extends LinkedHashMap<K, V> implements RefValue,
         @Override
         public boolean hasNext() {
             return iterator.hasNext();
-        }
-
-        @Override
-        public BString bStringValue() {
-            return null;
         }
     }
 

@@ -19,9 +19,6 @@ package org.wso2.ballerinalang.compiler.semantics.analyzer;
 
 import org.ballerinalang.compiler.CompilerPhase;
 import org.ballerinalang.model.TreeBuilder;
-import org.ballerinalang.model.clauses.FromClauseNode;
-import org.ballerinalang.model.clauses.LetClauseNode;
-import org.ballerinalang.model.clauses.WhereClauseNode;
 import org.ballerinalang.model.elements.AttachPoint;
 import org.ballerinalang.model.elements.Flag;
 import org.ballerinalang.model.elements.PackageID;
@@ -81,10 +78,6 @@ import org.wso2.ballerinalang.compiler.tree.BLangTypeDefinition;
 import org.wso2.ballerinalang.compiler.tree.BLangVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangWorker;
 import org.wso2.ballerinalang.compiler.tree.BLangXMLNS;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangLetClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangWhereClause;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAccessExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangBinaryExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangConstant;
@@ -123,7 +116,6 @@ import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch.BLangMatchStaticBindingPatternClause;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch.BLangMatchStructuredBindingPatternClause;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangPanic;
-import org.wso2.ballerinalang.compiler.tree.statements.BLangQueryAction;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangRecordDestructure;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangRecordVariableDef;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangRetry;
@@ -154,6 +146,7 @@ import org.wso2.ballerinalang.util.Flags;
 import org.wso2.ballerinalang.util.Lists;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -481,6 +474,7 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
         SymbolEnv recordEnv = SymbolEnv.createTypeEnv(recordTypeNode, recordTypeNode.symbol.scope, env);
         recordTypeNode.fields.forEach(field -> analyzeDef(field, recordEnv));
         validateDefaultable(recordTypeNode);
+        recordTypeNode.analyzed = true;
     }
 
     @Override
@@ -586,35 +580,14 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
             // This is a variable declared in a function, let expression, an action or a resource
             // If the variable is parameter then the variable symbol is already defined
             if (varNode.symbol == null) {
-                symbolEnter.defineNode(varNode, env);
-
-                // When 'var' is used, the typeNode is null
-                if (varNode.typeNode != null && varNode.typeNode.getKind() == NodeKind.RECORD_TYPE) {
-                    analyzeDef(varNode.typeNode, env);
-                }
-
-                varNode.annAttachments.forEach(annotationAttachment -> {
-                    annotationAttachment.attachPoints.add(AttachPoint.Point.VAR);
-                    annotationAttachment.accept(this);
-                });
+                analyzeVarNode(varNode, env, AttachPoint.Point.VAR);
             } else {
-                varNode.annAttachments.forEach(annotationAttachment -> {
-                    annotationAttachment.attachPoints.add(AttachPoint.Point.PARAMETER);
-                    annotationAttachment.accept(this);
-                });
+                analyzeVarNode(varNode, env, AttachPoint.Point.PARAMETER);
             }
         } else if ((ownerSymTag & SymTag.OBJECT) == SymTag.OBJECT) {
-            for (BLangAnnotationAttachment annotationAttachment : varNode.annAttachments) {
-                annotationAttachment.attachPoints.add(AttachPoint.Point.OBJECT_FIELD);
-                annotationAttachment.attachPoints.add(AttachPoint.Point.FIELD);
-                annotationAttachment.accept(this);
-            }
+            analyzeVarNode(varNode, env, AttachPoint.Point.OBJECT_FIELD, AttachPoint.Point.FIELD);
         } else if ((ownerSymTag & SymTag.RECORD) == SymTag.RECORD) {
-            for (BLangAnnotationAttachment annotationAttachment : varNode.annAttachments) {
-                annotationAttachment.attachPoints.add(AttachPoint.Point.RECORD_FIELD);
-                annotationAttachment.attachPoints.add(AttachPoint.Point.FIELD);
-                annotationAttachment.accept(this);
-            }
+            analyzeVarNode(varNode, env, AttachPoint.Point.RECORD_FIELD, AttachPoint.Point.FIELD);
         } else {
             varNode.annAttachments.forEach(annotationAttachment -> {
                 if (Symbols.isFlagOn(varNode.symbol.flags, Flags.LISTENER)) {
@@ -660,6 +633,25 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
         }
 
         transferForkFlag(varNode);
+    }
+
+    private void analyzeVarNode(BLangSimpleVariable varNode, SymbolEnv env, AttachPoint.Point... attachPoints) {
+        if (varNode.symbol == null) {
+            symbolEnter.defineNode(varNode, env);
+        }
+
+        // When 'var' is used, the typeNode is null. Need to analyze the record type node here if it's a locally
+        // defined record type.
+        if (varNode.typeNode != null && varNode.typeNode.getKind() == NodeKind.RECORD_TYPE &&
+                !((BLangRecordTypeNode) varNode.typeNode).analyzed) {
+            analyzeDef(varNode.typeNode, env);
+        }
+
+        List<AttachPoint.Point> attachPointsList = Arrays.asList(attachPoints);
+        for (BLangAnnotationAttachment annotationAttachment : varNode.annAttachments) {
+            annotationAttachment.attachPoints.addAll(attachPointsList);
+            annotationAttachment.accept(this);
+        }
     }
 
     private void transferForkFlag(BLangSimpleVariable varNode) {
@@ -2320,32 +2312,6 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
-    public void visit(BLangQueryAction queryAction) {
-        List<? extends FromClauseNode> fromClauseList = queryAction.fromClauseList;
-        List<? extends WhereClauseNode> whereClauseList = queryAction.whereClauseList;
-        List<? extends LetClauseNode> letClauseList = queryAction.letClauseList;
-        BLangDoClause doClauseNode = queryAction.doClause;
-
-        SymbolEnv parentEnv = env;
-        for (FromClauseNode fromClause : fromClauseList) {
-            parentEnv = typeChecker.typeCheckFromClause((BLangFromClause) fromClause, parentEnv);
-        }
-        for (LetClauseNode letClauseNode : letClauseList) {
-            parentEnv = typeChecker.typeCheckLetClause((BLangLetClause) letClauseNode, parentEnv);
-        }
-        SymbolEnv whereEnv = parentEnv;
-        for (WhereClauseNode whereClauseNode : whereClauseList) {
-            BLangWhereClause whereClause = (BLangWhereClause) whereClauseNode;
-            typeChecker.checkExpr(whereClause.expression, parentEnv);
-            whereEnv = typeNarrower.evaluateTruth(whereClause.expression, doClauseNode, parentEnv);
-        }
-
-        SymbolEnv blockEnv = SymbolEnv.createBlockEnv(doClauseNode.body, whereEnv);
-        // Analyze foreach node's statements.
-        analyzeStmt(doClauseNode.body, blockEnv);
-    }
-
-    @Override
     public void visit(BLangWhile whileNode) {
         typeChecker.checkExpr(whileNode.expr, env, symTable.booleanType);
 
@@ -2883,14 +2849,15 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
             return;
         }
         for (BLangAnnotationAttachment attachment : attachments) {
-            if (!attachment.annotationSymbol.pkgID.equals(PackageID.ANNOTATIONS)) {
+            if (attachment.annotationSymbol == null || // annotation symbol can be null on invalid attachment.
+                    !attachment.annotationSymbol.pkgID.equals(PackageID.ANNOTATIONS)) {
                 continue;
             }
             String annotationName = attachment.annotationName.value;
             if (annotationName.equals(Names.ANNOTATION_TYPE_PARAM.value)) {
                 dlog.error(attachment.pos, DiagnosticCode.TYPE_PARAM_OUTSIDE_LANG_MODULE);
             } else if (annotationName.equals(Names.ANNOTATION_BUILTIN_SUBTYPE.value)) {
-                dlog.error(attachment.pos, DiagnosticCode.TYPE_PARAM_OUTSIDE_LANG_MODULE);
+                dlog.error(attachment.pos, DiagnosticCode.BUILTIN_SUBTYPE_OUTSIDE_LANG_MODULE);
             }
         }
     }

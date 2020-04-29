@@ -25,6 +25,7 @@ import org.wso2.ballerinalang.compiler.bir.model.BIRTerminator;
 import org.wso2.ballerinalang.compiler.bir.model.InstructionKind;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.wso2.ballerinalang.compiler.bir.emit.EmitterUtils.emitBasicBlockRef;
 import static org.wso2.ballerinalang.compiler.bir.emit.EmitterUtils.emitBinaryOpInstructionKind;
@@ -69,8 +70,6 @@ class InstructionEmitter {
                 return emitInsConstantLoad((BIRNonTerminator.ConstantLoad) ins, tabs);
             case NEW_STRUCTURE:
                 return emitInsNewMap((BIRNonTerminator.NewStructure) ins, tabs);
-            case NEW_TABLE:
-                return emitInsNewTable((BIRNonTerminator.NewTable) ins, tabs);
             case NEW_INSTANCE:
                 return emitInsNewInstance((BIRNonTerminator.NewInstance) ins, tabs);
             case NEW_ARRAY:
@@ -143,31 +142,9 @@ class InstructionEmitter {
         nMapStr += emitSpaces(1);
         nMapStr += "NewMap";
         nMapStr += emitSpaces(1);
-        nMapStr += emitTypeRef(ins.type, 0);
+        nMapStr += emitVarRef(ins.rhsOp);
         nMapStr += ";";
         return nMapStr;
-    }
-
-    private static String emitInsNewTable(BIRNonTerminator.NewTable ins, int tabs) {
-
-        String str = "";
-        str += emitTabs(tabs);
-        str += emitVarRef(ins.lhsOp);
-        str += emitSpaces(1);
-        str += "=";
-        str += emitSpaces(1);
-        str += "table(";
-        str += emitVarRef(ins.columnsOp);
-        str += ",";
-        str += emitSpaces(1);
-        str += emitVarRef(ins.dataOp);
-        str += ",";
-        str += emitSpaces(1);
-        str += emitVarRef(ins.keyColOp);
-        str += ")<";
-        str += emitTypeRef(ins.type, 0);
-        str += ">;";
-        return str;
     }
 
     private static String emitInsNewInstance(BIRNonTerminator.NewInstance ins, int tabs) {
@@ -243,6 +220,9 @@ class InstructionEmitter {
         str += emitModuleID(ins.pkgId);
         str += "::";
         str += emitName(ins.funcName);
+        str += "(";
+        str += ins.closureMaps.stream().map(EmitterUtils::emitVarRef).collect(Collectors.joining(","));
+        str += ")";
         // TODO add params and closure maps
         str += ";";
         return str;
@@ -398,6 +378,8 @@ class InstructionEmitter {
         str += emitSpaces(1);
         str += "=";
         str += emitSpaces(1);
+        str += ins.kind.toString().toLowerCase();
+        str += " ";
         // TODO emit unary op kind
         str += emitVarRef(ins.rhsOp);
         str += ";";

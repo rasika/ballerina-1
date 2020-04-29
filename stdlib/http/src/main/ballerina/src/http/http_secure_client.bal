@@ -29,10 +29,15 @@ public type HttpSecureClient client object {
     public ClientConfiguration config = {};
     public HttpClient httpClient;
 
+    # Gets invoked to initialize the secure `client`. Due to the secure client releated configurations provided
+    # through the `config` record, the `HttpSecureClient` is initialized.
+    #
+    # + url - URL of the target service
+    # + config - The configurations to be used when initializing the `client`
     public function __init(string url, ClientConfiguration config) {
         self.url = url;
         self.config = config;
-        var simpleClient = createClient(url, self.config);
+        HttpClient|ClientError simpleClient = createClient(url, self.config);
         if (simpleClient is HttpClient) {
             self.httpClient = simpleClient;
         } else {
@@ -51,7 +56,7 @@ public type HttpSecureClient client object {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         Response res = check self.httpClient->post(path, req);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->post(path, inspection);
         }
@@ -69,7 +74,7 @@ public type HttpSecureClient client object {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         Response res = check self.httpClient->head(path, message = req);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->head(path, message = inspection);
         }
@@ -87,7 +92,7 @@ public type HttpSecureClient client object {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         Response res = check self.httpClient->put(path, req);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->put(path, inspection);
         }
@@ -106,7 +111,7 @@ public type HttpSecureClient client object {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         Response res = check self.httpClient->execute(httpVerb, path, req);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->execute(httpVerb, path, inspection);
         }
@@ -124,7 +129,7 @@ public type HttpSecureClient client object {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         Response res = check self.httpClient->patch(path, req);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->patch(path, inspection);
         }
@@ -142,7 +147,7 @@ public type HttpSecureClient client object {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         Response res = check self.httpClient->delete(path, req);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->delete(path, inspection);
         }
@@ -160,7 +165,7 @@ public type HttpSecureClient client object {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         Response res = check self.httpClient->get(path, message = req);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->get(path, message = inspection);
         }
@@ -178,7 +183,7 @@ public type HttpSecureClient client object {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         Response res = check self.httpClient->options(path, message = req);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->options(path, message = inspection);
         }
@@ -195,7 +200,7 @@ public type HttpSecureClient client object {
         Request req = request;
         req = check prepareSecureRequest(request, self.config);
         Response res = check self.httpClient->forward(path, request);
-        var inspection = check doInspection(req, res, self.config);
+        Request? inspection = check doInspection(req, res, self.config);
         if (inspection is Request) {
             return self.httpClient->forward(path, inspection);
         }
@@ -208,47 +213,47 @@ public type HttpSecureClient client object {
     # + httpVerb - The HTTP verb value
     # + path - The resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
-    #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - An `HttpFuture` that represents an asynchronous service invocation, or an error if the submission fails
+    #             `io:ReadableByteChannel`, or `mime:Entity[]`
+    # + return - An `http:HttpFuture` that represents an asynchronous service invocation, or else an `http:ClientError` if the submission fails
     public remote function submit(string httpVerb, string path, RequestMessage message) returns HttpFuture|ClientError {
         Request req = <Request>message;
         req = check prepareSecureRequest(req, self.config);
         return self.httpClient->submit(httpVerb, path, req);
     }
 
-    # This just pass the request to actual network call.
+    # This just passes the request to the actual network call.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - An HTTP response message, or an error if the invocation fails
+    # + httpFuture - The `http:HttpFuture` related to a previous asynchronous invocation
+    # + return - An `http:Response` message or else an `http:ClientError` if the invocation fails
     public remote function getResponse(HttpFuture httpFuture) returns Response|ClientError {
         return self.httpClient->getResponse(httpFuture);
     }
 
-    # This just pass the request to actual network call.
+    # Passes the request to an actual network call.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - A `boolean` that represents whether a `PushPromise` exists
+    # + httpFuture - The `http:HttpFuture` related to a previous asynchronous invocation
+    # + return - A `boolean`, which represents whether an `http:PushPromise` exists
     public remote function hasPromise(HttpFuture httpFuture) returns boolean {
         return self.httpClient->hasPromise(httpFuture);
     }
 
-    # This just pass the request to actual network call.
+    # Passes the request to an actual network call.
     #
-    # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - An HTTP Push Promise message, or an error if the invocation fails
+    # + httpFuture - The `http:HttpFuture` related to a previous asynchronous invocation
+    # + return - An `http:PushPromise` message or else an `http:ClientError` if the invocation fails
     public remote function getNextPromise(HttpFuture httpFuture) returns PushPromise|ClientError {
         return self.httpClient->getNextPromise(httpFuture);
     }
 
-    # This just pass the request to actual network call.
+    # Passes the request to an actual network call.
     #
-    # + promise - The related `PushPromise`
-    # + return - A promised HTTP `Response` message, or an error if the invocation fails
+    # + promise - The related `http:PushPromise`
+    # + return - A promised `http:Response` message or else an `http:ClientError` if the invocation fails
     public remote function getPromisedResponse(PushPromise promise) returns Response|ClientError {
         return self.httpClient->getPromisedResponse(promise);
     }
 
-    # This just pass the request to actual network call.
+    # Passes the request to an actual network call.
     #
     # + promise - The Push Promise to be rejected
     public remote function rejectPromise(PushPromise promise) {
@@ -271,13 +276,13 @@ public function createHttpSecureClient(string url, ClientConfiguration config) r
     }
 }
 
-# Prepare an HTTP request with the required headers for authentication based on the scheme.
+# Prepares an HTTP request with the required headers for authentication based on the scheme.
 #
 # + req - An HTTP outbound request message
 # + config - Client endpoint configurations
 # + return - Prepared HTTP request or `http:ClientError` if an error occurred at auth handler invocation
 function prepareSecureRequest(Request req, ClientConfiguration config) returns Request|ClientError {
-    var auth = config.auth;
+    OutboundAuthConfig? auth = config.auth;
     if (auth is OutboundAuthConfig) {
         OutboundAuthHandler authHandler = auth.authHandler;
         return authHandler.prepare(req);
@@ -286,14 +291,14 @@ function prepareSecureRequest(Request req, ClientConfiguration config) returns R
     return prepareAuthenticationError("Failed to prepare the HTTP request since OutboundAuthConfig is not configured.");
 }
 
-# Do inspection with the received HTTP response for the prepared HTTP request.
+# Does inspection with the received HTTP response for the prepared HTTP request.
 #
 # + req - An HTTP outbound request message
 # + res - An HTTP outbound response message
 # + config - Client endpoint configurations
 # + return - Prepared HTTP request or `()` if nothing to be done or `http:ClientError` if an error occurred at auth handler invocation
 function doInspection(Request req, Response res, ClientConfiguration config) returns Request|ClientError? {
-    var auth = config.auth;
+    OutboundAuthConfig? auth = config.auth;
     if (auth is OutboundAuthConfig) {
         OutboundAuthHandler authHandler = auth.authHandler;
         return authHandler.inspect(req, res);

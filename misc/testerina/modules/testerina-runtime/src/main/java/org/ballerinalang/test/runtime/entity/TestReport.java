@@ -17,11 +17,10 @@
  */
 package org.ballerinalang.test.runtime.entity;
 
-import com.google.gson.ExclusionStrategy;
-import com.google.gson.FieldAttributes;
+import org.ballerinalang.test.runtime.util.TesterinaConstants;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Final test report with coverage (if enabled).
@@ -33,6 +32,7 @@ public class TestReport {
     private String orgName;
 
     // attributes related to overall test results summary
+    private int totalTests;
     private int passed;
     private int failed;
     private int skipped;
@@ -42,8 +42,8 @@ public class TestReport {
     private int missedLines;
     private float coveragePercentage;
 
-    private Map<String, ModuleStatus> moduleStatus = new HashMap<>();
-    private Map<String, ModuleCoverage> moduleCoverage = new HashMap<>();
+    private List<ModuleStatus> moduleStatus = new ArrayList<>();
+    private List<ModuleCoverage> moduleCoverage = new ArrayList<>();
 
     public String getProjectName() {
         return projectName;
@@ -53,28 +53,30 @@ public class TestReport {
         this.projectName = projectName;
     }
 
-    public Map<String, ModuleStatus> getModuleStatus() {
+    public List<ModuleStatus> getModuleStatus() {
         return moduleStatus;
     }
 
-    public void setModuleStatus(Map<String, ModuleStatus> moduleStatus) {
+    public void setModuleStatus(List<ModuleStatus> moduleStatus) {
         this.moduleStatus = moduleStatus;
     }
 
     public void addModuleStatus(String moduleName, ModuleStatus status) {
-        this.moduleStatus.put(moduleName, status);
+        status.setName(moduleName);
+        this.moduleStatus.add(status);
     }
 
-    public Map<String, ModuleCoverage> getModuleCoverage() {
+    public List<ModuleCoverage> getModuleCoverage() {
         return moduleCoverage;
     }
 
-    public void setModuleCoverage(Map<String, ModuleCoverage> moduleCoverage) {
+    public void setModuleCoverage(List<ModuleCoverage> moduleCoverage) {
         this.moduleCoverage = moduleCoverage;
     }
 
     public void addCoverage(String moduleName, ModuleCoverage coverage) {
-        this.moduleCoverage.put(moduleName, coverage);
+        coverage.setName(moduleName);
+        this.moduleCoverage.add(coverage);
     }
 
     public void setOrgName(String orgName) {
@@ -91,17 +93,24 @@ public class TestReport {
      * @param coverage if coverage is enabled or not
      */
     public void finalizeTestResults(boolean coverage) {
-        for (Map.Entry<String, ModuleStatus> modStatus : moduleStatus.entrySet()) {
-            passed += modStatus.getValue().getPassed();
-            failed += modStatus.getValue().getFailed();
-            skipped += modStatus.getValue().getSkipped();
-
+        for (ModuleStatus modStatus : moduleStatus) {
+            if (TesterinaConstants.DOT.equals(modStatus.getName())) {
+                modStatus.setName(projectName);
+            }
+            passed += modStatus.getPassed();
+            failed += modStatus.getFailed();
+            skipped += modStatus.getSkipped();
+            totalTests = passed + failed + skipped;
         }
         if (coverage) {
-            for (Map.Entry<String, ModuleCoverage> modCov : moduleCoverage.entrySet()) {
-                coveredLines += modCov.getValue().getCoveredLines();
-                missedLines += modCov.getValue().getMissedLines();
-                coveragePercentage = (float) coveredLines / (coveredLines + missedLines) * 100;
+            for (ModuleCoverage modCov : moduleCoverage) {
+                if (TesterinaConstants.DOT.equals(modCov.getName())) {
+                    modCov.setName(projectName);
+                }
+                coveredLines += modCov.getCoveredLines();
+                missedLines += modCov.getMissedLines();
+                float coverageVal = (float) coveredLines / (coveredLines + missedLines) * 100;
+                coveragePercentage = (float) (Math.round(coverageVal * 100.0) / 100.0);
 
             }
         }
@@ -111,23 +120,8 @@ public class TestReport {
         return coveragePercentage;
     }
 
-    /**
-     * Inner class for excluding coverage information if coverage is not enabled.
-     * This class should be accessible from RunTestsTask when dumping the report to a json file.
-     */
-    public static class ReportExclusionStrategy implements ExclusionStrategy {
-
-        public boolean shouldSkipClass(Class<?> arg0) {
-            return false;
-        }
-
-        public boolean shouldSkipField(FieldAttributes f) {
-
-            return (f.getDeclaringClass() == TestReport.class && f.getName().equals("coveredLines"))
-                    || (f.getDeclaringClass() == TestReport.class && f.getName().equals("missedLines"))
-                    || (f.getDeclaringClass() == TestReport.class && f.getName().equals("coveragePercentage"))
-                    || (f.getDeclaringClass() == TestReport.class && f.getName().equals("moduleCoverage"));
-        }
-
+    public int getTotalTests() {
+        return totalTests;
     }
+
 }

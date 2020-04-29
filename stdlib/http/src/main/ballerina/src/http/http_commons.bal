@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java;
+import ballerina/java;
 import ballerina/mime;
 import ballerina/io;
 
@@ -227,7 +227,7 @@ public type CommonClientConfiguration record {|
 # Parses the given header value to extract its value and parameter map.
 #
 # + headerValue - The header value
-# + return - Returns a tuple containing the value and its parameter map
+# + return - A tuple containing the value and its parameter map or else an `http:ClientError` if the header parsing fails
 //TODO: Make the error nillable
 public function parseHeader(string headerValue) returns [string, map<any>]|ClientError {
     return externParseHeader(java:fromString(headerValue));

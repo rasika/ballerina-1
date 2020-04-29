@@ -26,7 +26,6 @@ import org.wso2.ballerinalang.compiler.semantics.model.symbols.BOperatorSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BPackageSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BXMLNSSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.SymTag;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.Symbols;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BAnyType;
@@ -43,15 +42,16 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BMapType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BNilType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BNoType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BObjectType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BReadonlyType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BRecordType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BServiceType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BStreamType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BStringSubType;
-import org.wso2.ballerinalang.compiler.semantics.model.types.BTableType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTupleType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTypedescType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BUnionType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BXMLSubType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BXMLType;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangExpression;
@@ -108,8 +108,6 @@ public class SymbolTable {
     public final BType stringType = new BType(TypeTags.STRING, null);
     public final BType booleanType = new BType(TypeTags.BOOLEAN, null);
     public final BType jsonType = new BJSONType(TypeTags.JSON, null);
-    public final BType xmlType = new BXMLType(TypeTags.XML, null);
-    public final BType tableType = new BTableType(TypeTags.TABLE, noType, null);
     public final BType anyType = new BAnyType(TypeTags.ANY, null);
     public final BType anydataType = new BAnydataType(TypeTags.ANYDATA, null);
     public final BType mapType = new BMapType(TypeTags.MAP, anyType, null);
@@ -123,11 +121,16 @@ public class SymbolTable {
     public final BArrayType arrayJsonType = new BArrayType(jsonType);
     public final BType tupleType = new BTupleType(Lists.of(noType));
     public final BType recordType = new BRecordType(null);
+    public final BType stringArrayType = new BArrayType(stringType);
+    public final BType jsonArrayType = new BArrayType(jsonType);
+    public final BType anydataArrayType = new BArrayType(anydataType);
     public final BType anyServiceType = new BServiceType(null);
     public final BType handleType = new BHandleType(TypeTags.HANDLE, null);
     public final BType typeDesc = new BTypedescType(this.anyType, null);
+    public final BType readonlyType = new BReadonlyType(TypeTags.READONLY, null);
 
     public final BType semanticError = new BType(TypeTags.SEMANTIC_ERROR, null);
+    public final BType nullSet = new BType(TypeTags.NULL_SET, null);
 
     public BType streamType = new BStreamType(TypeTags.STREAM, anydataType, null, null);
     public BErrorType errorType;
@@ -139,6 +142,7 @@ public class SymbolTable {
     public BFiniteType trueType;
     public BObjectType intRangeType;
     public BMapType mapAllType;
+    public BArrayType arrayAllType;
 
     // builtin subtypes
     public final BIntSubType signed32IntType = new BIntSubType(TypeTags.SIGNED32_INT, Names.SIGNED32);
@@ -148,6 +152,13 @@ public class SymbolTable {
     public final BIntSubType unsigned16IntType = new BIntSubType(TypeTags.UNSIGNED16_INT, Names.UNSIGNED16);
     public final BIntSubType unsigned8IntType = new BIntSubType(TypeTags.UNSIGNED8_INT, Names.UNSIGNED8);
     public final BStringSubType charStringType = new BStringSubType(TypeTags.CHAR_STRING, Names.CHAR);
+    public final BXMLSubType xmlElementType = new BXMLSubType(TypeTags.XML_ELEMENT, Names.XML_ELEMENT);
+    public final BXMLSubType xmlPIType = new BXMLSubType(TypeTags.XML_PI, Names.XML_PI);
+    public final BXMLSubType xmlCommentType = new BXMLSubType(TypeTags.XML_COMMENT, Names.XML_COMMENT);
+    public final BXMLSubType xmlTextType = new BXMLSubType(TypeTags.XML_TEXT, Names.XML_TEXT);
+
+    public final BType xmlType = new BXMLType(BUnionType.create(null, xmlElementType, xmlCommentType, xmlPIType,
+            xmlTextType),  null);
 
     public BPackageSymbol langInternalModuleSymbol;
     public BPackageSymbol langAnnotationModuleSymbol;
@@ -205,7 +216,6 @@ public class SymbolTable {
         initializeType(booleanType, TypeKind.BOOLEAN.typeName());
         initializeType(jsonType, TypeKind.JSON.typeName());
         initializeType(xmlType, TypeKind.XML.typeName());
-        initializeType(tableType, TypeKind.TABLE.typeName());
         initializeType(streamType, TypeKind.STREAM.typeName());
         initializeType(mapType, TypeKind.MAP.typeName());
         initializeType(mapStringType, TypeKind.MAP.typeName());
@@ -217,6 +227,7 @@ public class SymbolTable {
         initializeType(anyServiceType, TypeKind.SERVICE.typeName());
         initializeType(handleType, TypeKind.HANDLE.typeName());
         initializeType(typeDesc, TypeKind.TYPEDESC.typeName());
+        initializeType(readonlyType, TypeKind.READONLY.typeName());
 
         // Define subtypes
         initializeTSymbol(signed32IntType, Names.SIGNED32, PackageID.INT);
@@ -226,6 +237,10 @@ public class SymbolTable {
         initializeTSymbol(unsigned16IntType, Names.UNSIGNED16, PackageID.INT);
         initializeTSymbol(unsigned8IntType, Names.UNSIGNED8, PackageID.INT);
         initializeTSymbol(charStringType, Names.CHAR, PackageID.STRING);
+        initializeTSymbol(xmlElementType, Names.XML_ELEMENT, PackageID.XML);
+        initializeTSymbol(xmlPIType, Names.XML_PI, PackageID.XML);
+        initializeTSymbol(xmlCommentType, Names.XML_COMMENT, PackageID.XML);
+        initializeTSymbol(xmlTextType, Names.XML_TEXT, PackageID.XML);
 
         BLangLiteral trueLiteral = new BLangLiteral();
         trueLiteral.type = this.booleanType;
@@ -257,8 +272,14 @@ public class SymbolTable {
                 return jsonType;
             case TypeTags.XML:
                 return xmlType;
-            case TypeTags.TABLE:
-                return tableType;
+            case TypeTags.XML_COMMENT:
+                return xmlCommentType;
+            case TypeTags.XML_PI:
+                return xmlPIType;
+            case TypeTags.XML_ELEMENT:
+                return xmlElementType;
+            case TypeTags.XML_TEXT:
+                return xmlTextType;
             case TypeTags.STREAM:
                 return streamType;
             case TypeTags.NIL:
@@ -301,6 +322,14 @@ public class SymbolTable {
                 return this.unsigned8IntType;
             case Names.STRING_CHAR:
                 return this.charStringType;
+            case Names.STRING_XML_ELEMENT:
+                return this.xmlElementType;
+            case Names.STRING_XML_PI:
+                return this.xmlPIType;
+            case Names.STRING_XML_COMMENT:
+                return this.xmlCommentType;
+            case Names.STRING_XML_TEXT:
+                return this.xmlTextType;
         }
         throw new IllegalStateException("LangLib Subtype not found: " + name);
     }
@@ -326,15 +355,13 @@ public class SymbolTable {
     public void defineOperators() {
         // Binary arithmetic operators
         defineIntegerArithmeticOperations();
-        defineBinaryOperator(OperatorKind.ADD, xmlType, xmlType, xmlType);
-        defineBinaryOperator(OperatorKind.ADD, xmlType, stringType, xmlType);
-        defineBinaryOperator(OperatorKind.ADD, xmlType, charStringType, xmlType);
+
+        // XML arithmetic operators
+        defineXmlStringConcatanationOperations();
         defineBinaryOperator(OperatorKind.ADD, stringType, stringType, stringType);
-        defineBinaryOperator(OperatorKind.ADD, stringType, xmlType, xmlType);
         defineBinaryOperator(OperatorKind.ADD, stringType, charStringType, stringType);
         defineBinaryOperator(OperatorKind.ADD, charStringType, stringType, stringType);
         defineBinaryOperator(OperatorKind.ADD, charStringType, charStringType, stringType);
-        defineBinaryOperator(OperatorKind.ADD, charStringType, xmlType, xmlType);
         defineBinaryOperator(OperatorKind.ADD, floatType, floatType, floatType);
         defineBinaryOperator(OperatorKind.ADD, decimalType, decimalType, decimalType);
         defineBinaryOperator(OperatorKind.ADD, intType, floatType, floatType);
@@ -490,6 +517,20 @@ public class SymbolTable {
 
     }
 
+    private void defineXmlStringConcatanationOperations() {
+        defineBinaryOperator(OperatorKind.ADD, xmlType, stringType, xmlType);
+        defineBinaryOperator(OperatorKind.ADD, xmlType, charStringType, xmlType);
+
+        defineBinaryOperator(OperatorKind.ADD, stringType, xmlType, xmlType);
+        defineBinaryOperator(OperatorKind.ADD, charStringType, xmlType, xmlType);
+
+        defineBinaryOperator(OperatorKind.ADD, stringType, xmlTextType, xmlTextType);
+        defineBinaryOperator(OperatorKind.ADD, charStringType, xmlTextType, xmlTextType);
+
+        defineBinaryOperator(OperatorKind.ADD, xmlTextType, stringType, xmlTextType);
+        defineBinaryOperator(OperatorKind.ADD, xmlTextType, charStringType, xmlTextType);
+    }
+
     private void defineIntegerArithmeticOperations() {
 
         BType[] intTypes = {intType, byteType, signed32IntType, signed16IntType, signed8IntType, unsigned32IntType,
@@ -623,10 +664,5 @@ public class SymbolTable {
         BInvokableType opType = new BInvokableType(paramTypes, retType, null);
         BOperatorSymbol symbol = new BOperatorSymbol(name, rootPkgSymbol.pkgID, opType, rootPkgSymbol);
         rootScope.define(name, symbol);
-    }
-
-    public void loadDefaultXMLNamespace() {
-        rootPkgSymbol.scope.define(Names.XML, new BXMLNSSymbol(Names.XML, "http://www.w3.org/XML/1998/namespace",
-                this.rootPkgSymbol.pkgID, this.rootPkgSymbol));
     }
 }
