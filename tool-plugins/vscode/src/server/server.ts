@@ -20,12 +20,13 @@
 import * as path from 'path';
 import { debug } from '../utils/logger';
 import { ServerOptions, ExecutableOptions } from 'vscode-languageclient';
+import {ExtensionContext} from 'vscode';
 
 export function getServerOptions(ballerinaCmd: string) : ServerOptions {
     debug(`Using Ballerina CLI command '${ballerinaCmd}' for Language server.`);
     let cmd = ballerinaCmd;
     let args = ["start-language-server"];
-  
+
     let opt: ExecutableOptions = {};
     opt.env = Object.assign({}, process.env);
     if (process.env.LS_EXTENSIONS_PATH !== "") {
@@ -53,7 +54,7 @@ export function getOldCliServerOptions(ballerinaCmd: string, experimental: boole
     debug(`Using Ballerina CLI command '${ballerinaCmd}' for Language server.`);
     let cmd = ballerinaCmd;
     let args = ["start-language-server"];
-  
+
     let opt: ExecutableOptions = {};
     opt.env = Object.assign({}, process.env);
     if (process.env.LS_EXTENSIONS_PATH !== "") {
@@ -95,7 +96,7 @@ export function getOldCliServerOptions(ballerinaCmd: string, experimental: boole
     };
 }
 
-export function getOldServerOptions(ballerinaHome: string, experimental: boolean, debugLogsEnabled: boolean, traceLogsEnabled: boolean) : ServerOptions {
+export function getOldServerOptions(ballerinaHome: string, experimental: boolean, debugLogsEnabled: boolean, traceLogsEnabled: boolean, extPath: string) : ServerOptions {
     // Fallback into old way, TODO: Remove this in a later verison
     debug(`Using Ballerina installation at '${ballerinaHome}' for Language server.`);
 
@@ -133,6 +134,19 @@ export function getOldServerOptions(ballerinaHome: string, experimental: boolean
     if (process.env.LS_CUSTOM_CLASSPATH) {
         args.push('--classpath', process.env.LS_CUSTOM_CLASSPATH);
     }
+    // args.push('--classpath', process.env.LS_CUSTOM_CLASSPATH);
+    let aiPath: string = path.join(extPath, "aidatamapper", "ballerinaRecordMapper-1.0-SNAPSHOT.jar");
+    if (!opt.env.BALLERINA_CLASSPATH_EXT){
+        opt.env.BALLERINA_CLASSPATH_EXT = aiPath;
+    } else{
+        opt.env.BALLERINA_CLASSPATH_EXT += path.delimiter + aiPath;
+    }
+    // if (!opt.env.BALLERINA_CLASSPATH_EXT) {
+    //     opt.env.BALLERINA_CLASSPATH_EXT = '⁨/Users⁩/ayodhya⁩/Documents⁩/ballerina-lang⁩/⁨tool-plugins⁩/vscode⁩/ballerinaRecordMapper-1.0-SNAPSHOT.jar'
+    // } else {
+    //     opt.env.BALLERINA_CLASSPATH_EXT += path.delimiter + '⁨/Users⁩/ayodhya⁩/Documents⁩/ballerina-lang⁩/⁨tool-plugins⁩/vscode/ballerinaRecordMapper-1.0-SNAPSHOT.jar⁩'
+    // }
+    // args.push('--classpath','⁨Users⁩/ayodhya⁩/Documents⁩/ballerina-lang⁩/⁨tool-plugins⁩/vscode⁩/ballerinaRecordMapper-1.0-SNAPSHOT.jar');
     if (experimental) {
         args.push('--experimental');
     }
