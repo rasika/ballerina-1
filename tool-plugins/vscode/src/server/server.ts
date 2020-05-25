@@ -20,7 +20,7 @@
 import * as path from 'path';
 import { debug } from '../utils/logger';
 import { ServerOptions, ExecutableOptions } from 'vscode-languageclient';
-import {ExtensionContext} from 'vscode';
+// import {ExtensionContext} from 'vscode';
 
 export function getServerOptions(ballerinaCmd: string) : ServerOptions {
     debug(`Using Ballerina CLI command '${ballerinaCmd}' for Language server.`);
