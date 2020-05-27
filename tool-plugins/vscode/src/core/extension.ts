@@ -139,7 +139,7 @@ export class BallerinaExtension {
                 // if Home is found load Language Server.
                 let serverOptions:ServerOptions;
                 if (this.isNewConfigChangeSupported) {
-                    serverOptions = getServerOptions(this.ballerinaCmd);
+                    serverOptions = getServerOptions(this.ballerinaCmd, this.context!.extensionPath);
                 } else if (this.isNewCLICmdSupported) {
                     serverOptions = getOldCliServerOptions(this.ballerinaCmd, this.isExperimental(), this.isDebugLogsEnabled(), this.isTraceLogsEnabled(), this.isStdlibDefinitionEnabled());
                 } else {

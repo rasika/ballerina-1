@@ -20,9 +20,8 @@
 import * as path from 'path';
 import { debug } from '../utils/logger';
 import { ServerOptions, ExecutableOptions } from 'vscode-languageclient';
-// import {ExtensionContext} from 'vscode';
 
-export function getServerOptions(ballerinaCmd: string) : ServerOptions {
+export function getServerOptions(ballerinaCmd: string, extPath: string) : ServerOptions {
     debug(`Using Ballerina CLI command '${ballerinaCmd}' for Language server.`);
     let cmd = ballerinaCmd;
     let args = ["start-language-server"];
@@ -35,6 +34,14 @@ export function getServerOptions(ballerinaCmd: string) : ServerOptions {
         } else {
             opt.env.BALLERINA_CLASSPATH_EXT = process.env.LS_EXTENSIONS_PATH;
         }
+    }
+    // let aiPath: string = path.join("/Users/ayodhya/Documents/ballerina-lang/tool-plugins/vscode/", "aidatamapper", "ballerinaRecordMapper-1.0-SNAPSHOT.jar");
+    
+    let aiPath: string = path.join(extPath, "aidatamapper", "ballerinaRecordMapper-1.0-SNAPSHOT.jar");
+    if (!opt.env.BALLERINA_CLASSPATH_EXT){
+        opt.env.BALLERINA_CLASSPATH_EXT = aiPath;
+    } else{
+        opt.env.BALLERINA_CLASSPATH_EXT += path.delimiter + aiPath;
     }
     if (process.env.LSDEBUG === "true") {
         debug('Language Server is starting in debug mode.');
