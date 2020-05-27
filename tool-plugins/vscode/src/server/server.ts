@@ -35,13 +35,13 @@ export function getServerOptions(ballerinaCmd: string, extPath: string) : Server
             opt.env.BALLERINA_CLASSPATH_EXT = process.env.LS_EXTENSIONS_PATH;
         }
     }
-    // let aiPath: string = path.join("/Users/ayodhya/Documents/ballerina-lang/tool-plugins/vscode/", "aidatamapper", "ballerinaRecordMapper-1.0-SNAPSHOT.jar");
-    
-    let aiPath: string = path.join(extPath, "aidatamapper", "ballerinaRecordMapper-1.0-SNAPSHOT.jar");
-    if (!opt.env.BALLERINA_CLASSPATH_EXT){
-        opt.env.BALLERINA_CLASSPATH_EXT = aiPath;
-    } else{
-        opt.env.BALLERINA_CLASSPATH_EXT += path.delimiter + aiPath;
+    if (extPath !== "") {
+        let dataMapperPath: string = path.join(extPath, "aidatamapper", "*.jar");
+        if (!opt.env.BALLERINA_CLASSPATH_EXT){
+            opt.env.BALLERINA_CLASSPATH_EXT = dataMapperPath;
+        } else{
+            opt.env.BALLERINA_CLASSPATH_EXT += path.delimiter + dataMapperPath;
+        }
     }
     if (process.env.LSDEBUG === "true") {
         debug('Language Server is starting in debug mode.');
