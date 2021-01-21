@@ -30,6 +30,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
@@ -46,7 +47,7 @@ public class TestWorkspaceManager {
             = BallerinaWorkspaceManager.getInstance(new LanguageServerContextImpl());
 
     @Test(dataProvider = "workspace-data-provider")
-    public void testOpenDocument(Path filePath) throws IOException, WorkspaceDocumentException {
+    public void testOpenDocument(Path filePath) throws IOException {
         // Inputs from lang server
         DidOpenTextDocumentParams params = new DidOpenTextDocumentParams();
         TextDocumentItem textDocumentItem = new TextDocumentItem();
@@ -58,9 +59,10 @@ public class TestWorkspaceManager {
         workspaceManager.didOpen(filePath, params);
 
         // Assert content
+        String content = new String(Files.readAllBytes(filePath));
         Optional<Document> document = workspaceManager.document(filePath);
         Assert.assertNotNull(document.get());
-        Assert.assertEquals(document.get().syntaxTree().textDocument().toString(), dummyContent);
+        Assert.assertEquals(document.get().syntaxTree().textDocument().toString(), content);
     }
 
     @Test(dataProvider = "workspace-data-provider", dependsOnMethods = "testOpenDocument")

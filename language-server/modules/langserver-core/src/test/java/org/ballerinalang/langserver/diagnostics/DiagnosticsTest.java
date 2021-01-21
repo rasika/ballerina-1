@@ -24,7 +24,6 @@ import org.ballerinalang.langserver.LSContextOperation;
 import org.ballerinalang.langserver.common.utils.CommonUtil;
 import org.ballerinalang.langserver.commons.DocumentServiceContext;
 import org.ballerinalang.langserver.commons.LanguageServerContext;
-import org.ballerinalang.langserver.commons.workspace.WorkspaceDocumentException;
 import org.ballerinalang.langserver.contexts.ContextBuilder;
 import org.ballerinalang.langserver.contexts.LanguageServerContextImpl;
 import org.ballerinalang.langserver.diagnostic.DiagnosticsHelper;
@@ -72,7 +71,7 @@ public class DiagnosticsTest {
     }
 
     @Test(dataProvider = "completion-data-provider")
-    public void test(String config) throws IOException, WorkspaceDocumentException {
+    public void test(String config) throws IOException {
         String configDir = "configs";
         String configJsonPath = "diagnostics" + File.separator + configDir + File.separator + config + ".json";
         JsonObject configJsonObject = FileUtils.fileContentAsObject(configJsonPath);
@@ -98,7 +97,7 @@ public class DiagnosticsTest {
         }
     }
 
-    String getResponse(JsonObject configJsonObject) throws WorkspaceDocumentException {
+    String getResponse(JsonObject configJsonObject) {
         Path sourcePath = testRoot.resolve(configJsonObject.get("source").getAsString());
         DocumentServiceContext serviceContext = ContextBuilder.buildBaseContext(sourcePath.toUri().toString(),
                                                                                 this.workspaceManager,
